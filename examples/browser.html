@@ -1,0 +1,27 @@
+<html>
+<head>
+  <title>Test</title>
+</head>
+<body>
+  <!-- importing the automatically build module -->
+  <script src="../dist/es6module.umd.js"></script>
+
+  <!-- The minified version is also accessible -->
+  <!-- <script src="../dist/es6module.umd.min.js"></script> -->
+
+  <p>Open Javascript console.</p>
+
+  <script>
+
+    // the foo object is part of our es6module module
+    var foo = new es6module.Foo(20, 30);
+
+    // do something with foo
+    foo.printAnAttribute();
+    foo.setAnAttribute(34)
+    foo.printAnAttribute();
+    foo.testWorker();
+  </script>
+
+</body>
+</html>
