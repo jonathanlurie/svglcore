@@ -1,9 +1,11 @@
 import Scene from './Scene'
 import PerspectiveCamera from './PerspectiveCamera'
-import PolylineMesh from './PolylineMesh'
+import Mesh from './Mesh'
+import RENDER_MODES from './renderModes'
 
 export default ({
   Scene,
   PerspectiveCamera,
-  PolylineMesh,
+  Mesh,
+  RENDER_MODES,
 })
