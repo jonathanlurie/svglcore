@@ -6,15 +6,23 @@ import MeshView from './MeshView'
 class Mesh {
   constructor() {
     this._id = uuid4()
+    this._meshView = new MeshView(this)
+
+    // geometry data
     this._vertices = null
     this._faces = null
+    this._verticesPerFace = 3
     this._boundingBox = {
       min: glmatrix.vec3.fromValues(0, 0, 0),
       max: glmatrix.vec3.fromValues(0, 0, 0),
     }
-    this._color = '#000'
+
+    // material data
     this._renderMode = RENDER_MODES.POINT_CLOUD
-    this._meshView = new MeshView(this)
+    this._color = '#000'
+    this._opacity = 1
+    this._lineThickness = 10
+    this._radius = 10
   }
 
 
@@ -37,6 +45,26 @@ class Mesh {
   }
 
 
+  set lineThickness(t) {
+    this._lineThickness = t
+  }
+
+
+  get lineThickness() {
+    return this._lineThickness
+  }
+
+
+  set radius(r) {
+    this._radius = r
+  }
+
+
+  get radius() {
+    return this._radius
+  }
+
+
   set vertices(v) {
     if (v.length % 3 !== 0) {
       throw new Error('The vertice array length must be multiple of 3.')
@@ -52,6 +80,16 @@ class Mesh {
   }
 
 
+  set faces(f) {
+    this._faces = f
+  }
+
+
+  get faces() {
+    return this._faces
+  }
+
+
   set color(c) {
     this._color = c
   }
@@ -59,6 +97,26 @@ class Mesh {
 
   get color() {
     return this._color
+  }
+
+
+  set opacity(o) {
+    this._opacity = o
+  }
+
+
+  get opacity() {
+    return this._opacity
+  }
+
+
+  set verticesPerFace(vpf) {
+    this._verticesPerFace = vpf
+  }
+
+
+  get verticesPerFace() {
+    return this._verticesPerFace
   }
 
 

@@ -24,6 +24,7 @@ class MeshView {
 
 
   reset() {
+    // TODO: compare which is best
     // this._view.innerHTML = ''
     while (this._view.firstChild) {
       this._view.removeChild(this._view.firstChild)
