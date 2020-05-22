@@ -18,7 +18,9 @@ class PerspectiveCamera {
     this._far = 1e6
 
     // computing the matrices with the default values
+    // view matrix:
     glmatrix.mat4.lookAt(this._viewMat, this._position, this._target, this._up)
+    // projection matrix:
     glmatrix.mat4.perspective(this._projectionMat, this._fovy, this._aspectRatio, this._near, this._far)
   
     // TODO all the rest, including computing the viewProjection mat

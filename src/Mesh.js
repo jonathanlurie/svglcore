@@ -17,6 +17,10 @@ class Mesh {
       max: glmatrix.vec3.fromValues(0, 0, 0),
     }
 
+    this._scale = glmatrix.vec3.fromValues(1, 1, 1)
+    this._quaternion = glmatrix.quat.create()
+    this._position = glmatrix.vec3.create()
+
     // material data
     this._renderMode = RENDER_MODES.POINT_CLOUD
     this._color = '#000'
@@ -156,6 +160,12 @@ class Mesh {
     return this._boundingBox
   }
 
+
+  get modelMatrix() {
+    const mat = glmatrix.mat4.create()
+    glmatrix.mat4.fromRotationTranslationScale(mat, this._quaternion, this._position, this._scale)
+    return mat
+  }
 }
 
 export default Mesh
