@@ -25,8 +25,8 @@ class Mesh {
     this._renderMode = RENDER_MODES.POINT_CLOUD
     this._color = '#000'
     this._opacity = 1
-    this._lineThickness = 10
-    this._radius = 10
+    this._lineThickness = 3
+    this._radius = 3
   }
 
 
@@ -124,6 +124,9 @@ class Mesh {
   }
 
 
+  /**
+   * Note: the bounding box is in world coordinates
+   */
   computeBoundingBox() {
     if (this._vertices === null) {
       throw new Error('This mesh does not have any vertex.')
@@ -145,12 +148,19 @@ class Mesh {
       maxz = Math.max(maxz, this._vertices[i + 2])
     }
 
-    this._boundingBox.min[0] = minx
-    this._boundingBox.min[1] = miny
-    this._boundingBox.min[2] = minz
-    this._boundingBox.max[0] = maxx
-    this._boundingBox.max[1] = maxy
-    this._boundingBox.max[2] = maxz
+    const modelMat = this.modelMatrix
+    const minInWorld = glmatrix.vec3.create()
+    const maxInWorld = glmatrix.vec3.create()
+    glmatrix.vec3.transformMat4(minInWorld, [minx, miny, minz], modelMat)
+    glmatrix.vec3.transformMat4(maxInWorld, [maxx, maxy, maxz], modelMat)
+
+    // if the model matrix encodes a rotation, min and max could be swapped on some dimensions
+    this._boundingBox.min[0] = Math.min(minInWorld[0], maxInWorld[0])
+    this._boundingBox.min[1] = Math.min(minInWorld[1], maxInWorld[1])
+    this._boundingBox.min[2] = Math.min(minInWorld[2], maxInWorld[2])
+    this._boundingBox.max[0] = Math.max(minInWorld[0], maxInWorld[0])
+    this._boundingBox.max[1] = Math.max(minInWorld[1], maxInWorld[1])
+    this._boundingBox.max[2] = Math.max(minInWorld[2], maxInWorld[2])
 
     return this
   }

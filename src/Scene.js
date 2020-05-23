@@ -30,6 +30,11 @@ class Scene {
   get(meshId) {
     return this._objects.filter(m => m.id === meshId)
   }
+
+  
+  getAll() {
+    return this._objects
+  }
 }
 
 export default Scene
