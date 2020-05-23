@@ -60,7 +60,6 @@
     }
   },
   "dependencies": {
-    "gl-matrix": "^3.3.0",
-    "uuid4": "^1.1.4"
+    "gl-matrix": "^3.3.0"
   }
 }

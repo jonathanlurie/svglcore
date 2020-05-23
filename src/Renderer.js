@@ -7,7 +7,7 @@ import RENDER_MODES from './renderModes'
 class Renderer {
   constructor(parentDiv, options) {
     this._width = 'width' in options ? options.width : window.innerWidth
-    this._height = 'heigth' in options ? options.height : window.innerHeight
+    this._height = 'height' in options ? options.height : window.innerHeight
     this._parentDiv = parentDiv
 
     this._canvas = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'svg')
@@ -20,6 +20,15 @@ class Renderer {
 
     this._scene = null
     this._camera = null
+
+    if ('scene' in options) {
+      this.scene = options.scene
+    }
+
+    if ('camera' in options) {
+      this.camera = options.camera
+    }
+
   }
 
 
@@ -60,16 +69,19 @@ class Renderer {
     this.resetCanvas()
 
     const meshes = this._scene.getAll()
-    const viewMat = this._camera.viewMat
-    const projMat = this._camera.projMat
+    const viewMat = this._camera.viewMatrix
+    const projMat = this._camera.projMatrix
 
     meshes.forEach((mesh) => {
       // dealing with matrices
-      const modelMat = mesh.modelMat
+      const modelMat = mesh.modelMatrix
       const modelViewMat = glmatrix.mat4.create()
       const modelViewProjMat = glmatrix.mat4.create()
-      glmatrix.mat4.multiply(modelViewMat, modelMat, viewMat)
-      glmatrix.mat4.multiply(modelViewProjMat, modelViewMat, projMat)
+      // glmatrix.mat4.multiply(modelViewMat, modelMat, viewMat)
+      // glmatrix.mat4.multiply(modelViewProjMat, modelViewMat, projMat)
+
+      glmatrix.mat4.multiply(modelViewMat, viewMat, modelMat)
+      glmatrix.mat4.multiply(modelViewProjMat, projMat, modelViewMat)
 
       switch (mesh.renderMode) {
         case RENDER_MODES.POINT_CLOUD:
@@ -78,6 +90,14 @@ class Renderer {
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     })
+  }
+
+
+  _unit2DPositionToCanvasPosition(unitPos) {
+    return [
+      unitPos[0] * this._width/2 + this._width / 2,
+      this._height - (unitPos[1] * this._height/2 + this._height / 2),
+    ]
   }
 
 
@@ -90,7 +110,8 @@ class Renderer {
 
     for (let i = 0; i < vertices.length; i += 3) {
       glmatrix.vec3.transformMat4(tmpVector, [vertices[i], vertices[i + 1], vertices[i + 2]], mvpMat)
-      meshView.addCircle(tmpVector[0], tmpVector[1])
+      const canvasPos = this._unit2DPositionToCanvasPosition(tmpVector)
+      meshView.addCircle(canvasPos[0], canvasPos[1])
     }
 
     this._canvas.appendChild(meshView.view)

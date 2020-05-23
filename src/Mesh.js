@@ -1,11 +1,11 @@
-import uuid4 from 'uuid4'
 import * as glmatrix from 'gl-matrix'
+import Tools from './Tools'
 import RENDER_MODES from './renderModes'
 import MeshView from './MeshView'
 
 class Mesh {
   constructor() {
-    this._id = uuid4()
+    this._id = Tools.uuidv4()
     this._meshView = new MeshView(this)
 
     // geometry data
@@ -175,6 +175,11 @@ class Mesh {
     const mat = glmatrix.mat4.create()
     glmatrix.mat4.fromRotationTranslationScale(mat, this._quaternion, this._position, this._scale)
     return mat
+  }
+
+
+  get meshView() {
+    return this._meshView
   }
 }
 
