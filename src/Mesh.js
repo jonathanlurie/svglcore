@@ -8,6 +8,9 @@ class Mesh {
     this._id = Tools.uuidv4()
     this._meshView = new MeshView(this)
 
+    // if visible is false, this mesh will not be rendered
+    this._visible = true
+
     // geometry data
     this._vertices = null
     this._faces = null
@@ -121,6 +124,15 @@ class Mesh {
 
   get verticesPerFace() {
     return this._verticesPerFace
+  }
+
+  get visible() {
+    return this._visible
+  }
+
+
+  set visible(v) {
+    this._visible = v
   }
 
 

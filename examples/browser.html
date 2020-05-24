@@ -39,11 +39,19 @@
     const mesh = new svglcore.Mesh()
     mesh.vertices = vertices
     mesh.radius = 0.2
+    mesh.opacity = 0.5
 
     const scene = new svglcore.Scene()
     scene.add(mesh)
 
-    const camera = new svglcore.PerspectiveCamera()
+    const camera = new svglcore.PerspectiveCamera(
+      // {
+      //   eye: [0, 0, -20],
+      //   center: [0, 0, 10],
+      //   up: [0, 1, 0]
+      // }
+    )
+    
     camera.aspectRatio = canvasSize.w / canvasSize.h
     camera.fieldOfView = Math.PI / 4
 

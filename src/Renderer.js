@@ -1,3 +1,4 @@
+/* eslint-disable no-continue */
 import * as glmatrix from 'gl-matrix'
 import Scene from './Scene'
 import PerspectiveCamera from './PerspectiveCamera'
@@ -73,6 +74,10 @@ class Renderer {
     const projMat = this._camera.projMatrix
 
     meshes.forEach((mesh) => {
+      if (!mesh.visible) {
+        return
+      }
+
       // dealing with matrices
       const modelMat = mesh.modelMatrix
       const modelViewMat = glmatrix.mat4.create()
@@ -117,8 +122,16 @@ class Renderer {
       // computing the position of the center of the circle to add
       glmatrix.vec3.transformMat4(tmpVector, [vertices[i], vertices[i + 1], vertices[i + 2]], mvpMat)
 
-      // TODO: Is it behind the camera??
-      
+      // No rendering if outside of projection  canonical/frustrum box
+      if (tmpVector[0] >= 1
+      || tmpVector[0] <= -1
+      || tmpVector[1] >= 1
+      || tmpVector[1] <= -1
+      || tmpVector[2] >= 1
+      || tmpVector[2] <= -1) {
+        continue
+      }
+
       const canvasPos = this._unit2DPositionToCanvasPosition(tmpVector)
 
       // computing the cirlce radius

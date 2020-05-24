@@ -70,6 +70,9 @@ class Mesh {
     this._id = Tools.uuidv4();
     this._meshView = new MeshView(this);
 
+    // if visible is false, this mesh will not be rendered
+    this._visible = true;
+
     // geometry data
     this._vertices = null;
     this._faces = null;
@@ -183,6 +186,15 @@ class Mesh {
 
   get verticesPerFace() {
     return this._verticesPerFace
+  }
+
+  get visible() {
+    return this._visible
+  }
+
+
+  set visible(v) {
+    this._visible = v;
   }
 
 
@@ -437,6 +449,8 @@ class PerspectiveCamera {
 
 }
 
+/* eslint-disable no-continue */
+
 class Renderer {
   constructor(parentDiv, options) {
     this._width = 'width' in options ? options.width : window.innerWidth;
@@ -506,6 +520,10 @@ class Renderer {
     const projMat = this._camera.projMatrix;
 
     meshes.forEach((mesh) => {
+      if (!mesh.visible) {
+        return
+      }
+
       // dealing with matrices
       const modelMat = mesh.modelMatrix;
       const modelViewMat = mat4.create();
@@ -550,8 +568,16 @@ class Renderer {
       // computing the position of the center of the circle to add
       vec3.transformMat4(tmpVector, [vertices[i], vertices[i + 1], vertices[i + 2]], mvpMat);
 
-      // TODO: Is it behind the camera??
-      
+      // No rendering if outside of projection  canonical/frustrum box
+      if (tmpVector[0] >= 1
+      || tmpVector[0] <= -1
+      || tmpVector[1] >= 1
+      || tmpVector[1] <= -1
+      || tmpVector[2] >= 1
+      || tmpVector[2] <= -1) {
+        continue
+      }
+
       const canvasPos = this._unit2DPositionToCanvasPosition(tmpVector);
 
       // computing the cirlce radius
