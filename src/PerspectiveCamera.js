@@ -48,6 +48,16 @@ class PerspectiveCamera {
     this._distance = glmatrix.vec3.distance(eye, center)
   }
 
+  get matrix() {
+    let m = glmatrix.mat4.create()
+    glmatrix.mat4.invert(m, this.viewMatrix)
+    return m
+  }
+
+  get position() {
+    const m = this.matrix
+    return glmatrix.vec3.fromValues(m[12], m[13], m[14])
+  }
 
   get viewMatrix() {
     const out = glmatrix.mat4.create()

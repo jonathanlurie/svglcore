@@ -99,8 +99,8 @@ class Renderer {
    */
   _unit2DPositionToCanvasPosition(unitPos) {
     return [
-      unitPos[0] * this._width/2 + this._width / 2,
-      this._height - (unitPos[1] * this._height/2 + this._height / 2),
+      (unitPos[0] * this._width + this._width) * 0.5,
+      this._height - (unitPos[1] * this._height + this._height) * 0.5,
     ]
   }
 
@@ -108,6 +108,7 @@ class Renderer {
   _renderPointCloud(mesh, mvpMat) {
     const meshView = mesh.meshView
     const vertices = mesh.vertices
+    const camPosition = this._camera.position
 
     meshView.reset()
     const tmpVector = glmatrix.vec3.create()
@@ -115,13 +116,14 @@ class Renderer {
     for (let i = 0; i < vertices.length; i += 3) {
       // computing the position of the center of the circle to add
       glmatrix.vec3.transformMat4(tmpVector, [vertices[i], vertices[i + 1], vertices[i + 2]], mvpMat)
+
+      // TODO: Is it behind the camera??
+      
       const canvasPos = this._unit2DPositionToCanvasPosition(tmpVector)
 
       // computing the cirlce radius
-      glmatrix.vec3.transformMat4(tmpVector, [vertices[i] + mesh.radius, vertices[i + 1], vertices[i + 2]], mvpMat)
-      const circleEdgePos = this._unit2DPositionToCanvasPosition(tmpVector)
-      const radius = ((circleEdgePos[0] - canvasPos[0]) ** 2 + (circleEdgePos[1] - canvasPos[1]) ** 2) ** 0.5
-
+      const mesh2camDistance = ((vertices[i] - camPosition[0]) ** 2 + (vertices[i + 1] - camPosition[1]) ** 2 + (vertices[i + 2] - camPosition[2]) ** 2) ** 0.5
+      const radius = (mesh.radius / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2)
       meshView.addCircle(canvasPos[0], canvasPos[1], radius)
     }
 

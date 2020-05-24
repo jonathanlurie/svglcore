@@ -38,7 +38,7 @@
 
     const mesh = new svglcore.Mesh()
     mesh.vertices = vertices
-    mesh.radius = 1
+    mesh.radius = 0.2
 
     const scene = new svglcore.Scene()
     scene.add(mesh)
@@ -56,9 +56,7 @@
         scene: scene
       })
 
-    console.time('c')
     renderer.render()
-    console.timeEnd('c')
 
 
     parentDiv.addEventListener('mousedown', (evt) => {
@@ -72,7 +70,7 @@
     parentDiv.addEventListener('mousemove', (evt) => {
       if (mouseDown) {
         camera.rotate(
-          [-evt.movementX * 0.01, -evt.movementY * 0.01]
+          [-evt.movementX * 0.005, -evt.movementY * 0.005]
         )
         renderer.render()
       }
