@@ -93,6 +93,10 @@ class Renderer {
   }
 
 
+  /**
+   * transform a 2D unit position [-1, 1] into an actual canvas position
+   * that has origin on top left.
+   */
   _unit2DPositionToCanvasPosition(unitPos) {
     return [
       unitPos[0] * this._width/2 + this._width / 2,
@@ -109,9 +113,16 @@ class Renderer {
     const tmpVector = glmatrix.vec3.create()
 
     for (let i = 0; i < vertices.length; i += 3) {
+      // computing the position of the center of the circle to add
       glmatrix.vec3.transformMat4(tmpVector, [vertices[i], vertices[i + 1], vertices[i + 2]], mvpMat)
       const canvasPos = this._unit2DPositionToCanvasPosition(tmpVector)
-      meshView.addCircle(canvasPos[0], canvasPos[1])
+
+      // computing the cirlce radius
+      glmatrix.vec3.transformMat4(tmpVector, [vertices[i] + mesh.radius, vertices[i + 1], vertices[i + 2]], mvpMat)
+      const circleEdgePos = this._unit2DPositionToCanvasPosition(tmpVector)
+      const radius = ((circleEdgePos[0] - canvasPos[0]) ** 2 + (circleEdgePos[1] - canvasPos[1]) ** 2) ** 0.5
+
+      meshView.addCircle(canvasPos[0], canvasPos[1], radius)
     }
 
     this._canvas.appendChild(meshView.view)

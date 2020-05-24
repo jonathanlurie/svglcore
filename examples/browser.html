@@ -17,11 +17,12 @@
   <div id="parent"></div>
 
   <script>
-    console.log(svglcore)
+    const parentDiv = document.getElementById('parent')
+    let mouseDown = false
 
     const canvasSize = {
-      w: 500,
-      h: 300
+      w: 1000,
+      h: 600
     }
     
     const vertices = new Float32Array([
@@ -37,6 +38,7 @@
 
     const mesh = new svglcore.Mesh()
     mesh.vertices = vertices
+    mesh.radius = 1
 
     const scene = new svglcore.Scene()
     scene.add(mesh)
@@ -46,7 +48,7 @@
     camera.fieldOfView = Math.PI / 4
 
     const renderer = new svglcore.Renderer(
-      document.getElementById('parent'),
+      parentDiv,
       {
         width: canvasSize.w,
         height: canvasSize.h,
@@ -54,7 +56,33 @@
         scene: scene
       })
 
+    console.time('c')
     renderer.render()
+    console.timeEnd('c')
+
+
+    parentDiv.addEventListener('mousedown', (evt) => {
+      mouseDown = true
+    })
+
+    parentDiv.addEventListener('mouseup', (evt) => {
+      mouseDown = false
+    })
+
+    parentDiv.addEventListener('mousemove', (evt) => {
+      if (mouseDown) {
+        camera.rotate(
+          [-evt.movementX * 0.01, -evt.movementY * 0.01]
+        )
+        renderer.render()
+      }
+    })
+
+    parentDiv.addEventListener('wheel', (evt) => {
+      event.preventDefault()
+      camera.dolly(evt.deltaY / 100.)
+      renderer.render()
+    })
 
     
   </script>

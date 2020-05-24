@@ -25,8 +25,8 @@ class Mesh {
     this._renderMode = RENDER_MODES.POINT_CLOUD
     this._color = '#000'
     this._opacity = 1
-    this._lineThickness = 3
-    this._radius = 3
+    this._lineThickness = 1
+    this._radius = 1
   }
 
 
