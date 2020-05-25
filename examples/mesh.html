@@ -38,11 +38,12 @@
     
 
     const mesh = new svglcore.Mesh()
-    mesh.vertices = meshData.vertices.map(num => num * 200)
+    mesh.vertices = meshData.vertices.map((num) => num * 200)
     mesh.faces = meshData.faces
     mesh.verticesPerFace = meshData.vertices.length / meshData.faces.length
-    mesh.radius = 0.2
+    mesh.radius = 0.9
     mesh.opacity = 0.5
+    mesh.scale = [2, 2, 2]
 
     mesh.computeBoundingBox()
     console.log(mesh.boundingBox)

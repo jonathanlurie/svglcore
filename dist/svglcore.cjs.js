@@ -34,6 +34,9 @@ class MeshView {
 
     this._view = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'g');
     this._view.setAttributeNS(null, 'id', mesh.id);
+
+    this._circlePool = [];
+    this._circlePoolCounter = 0;
   }
 
 
@@ -49,20 +52,41 @@ class MeshView {
 
   reset() {
     // TODO: compare which is best
-    // this._view.innerHTML = ''
-    while (this._view.firstChild) {
-      this._view.removeChild(this._view.firstChild);
-    }
+    this._view.innerHTML = '';
+    // while (this._view.firstChild) {
+    //   this._view.removeChild(this._view.firstChild)
+    // }
+    this._circlePoolCounter = 0;
   }
 
 
+  /**
+   * 
+   * @param {*} x 
+   * @param {*} y 
+   * @param {*} radius 
+   */
   addCircle(x, y, radius) {
-    const circle = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'circle');
+    let circle = null;
+
+    // the pool is not large enough, we create a new circle
+    if (this._circlePool.length < this._circlePoolCounter + 1 ) {
+      circle = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'circle');
+      this._circlePool.push(circle);
+    } else {
+    // The pool is large enough, we borrow a circle from the pool
+      circle = this._circlePool[this._circlePoolCounter];
+    }
+
+    this._circlePoolCounter += 1;
+
     circle.setAttributeNS(null, 'cx', x);
     circle.setAttributeNS(null, 'cy', y);
     circle.setAttributeNS(null, 'r', radius);
-    circle.setAttributeNS(null, 'id', this._mesh.id);
-    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.color}; opacity: ${this._mesh.opacity}; stroke-width: 0px;`);
+    // circle.setAttributeNS(null, 'id', this._mesh.id)
+    circle.setAttributeNS(null, 'fill', this._mesh.color);
+    circle.setAttributeNS(null, 'opacity', this._mesh.opacity);
+    circle.setAttributeNS(null, 'stroke-width', 0);
     this._view.appendChild(circle);
   }
 }
@@ -77,6 +101,7 @@ class Mesh {
 
     // geometry data
     this._vertices = null;
+    this._worldVertices = null;
     this._faces = null;
     this._verticesPerFace = 3;
     this._boundingBox = {
@@ -94,6 +119,9 @@ class Mesh {
     this._opacity = 1;
     this._lineThickness = 1;
     this._radius = 1;
+
+    this._matrix = glmatrix.mat4.create();
+    this._worldVerticesMustUpdate = true;
   }
 
 
@@ -142,12 +170,39 @@ class Mesh {
     }
 
     this._vertices = v;
+    this._worldVertices = new v.constructor(v.length);
     return this
   }
 
 
   get vertices() {
     return this._vertices
+  }
+
+
+  get worldVertices() {
+
+    if (!this._worldVerticesMustUpdate) {
+      return this._worldVertices
+    }
+
+    const mat = this.modelMatrix;
+    const tmpVec3 = glmatrix.vec3.create();
+    const vert = this._vertices;
+
+    for (let i = 0; i < this._worldVertices.length; i += 3) {
+      tmpVec3[0] = vert[i];
+      tmpVec3[1] = vert[i + 1];
+      tmpVec3[2] = vert[i + 2];
+
+      glmatrix.vec3.transformMat4(tmpVec3, tmpVec3, mat);
+      this._worldVertices[i] = tmpVec3[0];
+      this._worldVertices[i + 1] = tmpVec3[1];
+      this._worldVertices[i + 2] = tmpVec3[2];
+    }
+
+    this._worldVerticesMustUpdate = false;
+    return this._worldVertices
   }
 
 
@@ -248,15 +303,55 @@ class Mesh {
 
 
   get modelMatrix() {
-    const mat = glmatrix.mat4.create();
-    glmatrix.mat4.fromRotationTranslationScale(mat, this._quaternion, this._position, this._scale);
-    return mat
+    return this._matrix
   }
 
 
   get meshView() {
     return this._meshView
   }
+
+
+  set position(p) {
+    this._position[0] = p[0];
+    this._position[2] = p[1];
+    this._position[3] = p[2];
+    this.updateMatrix();
+  }
+
+
+  get position() {
+    return this._position.slice()
+  }
+
+
+  set quaternion(q) {
+    this._quaternion[0] = q[0];
+    this._quaternion[2] = q[1];
+    this._quaternion[3] = q[2];
+    this._quaternion[4] = q[4];
+    this.updateMatrix();
+  }
+
+
+  get quaternion() {
+    return this._quaternion.slice()
+  }
+
+
+  set scale(s) {
+    this._scale[0] = s[0];
+    this._scale[1] = s[1];
+    this._scale[2] = s[2];
+    this.updateMatrix();
+  }
+
+
+  updateMatrix() {
+    glmatrix.mat4.fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale);
+    this._worldVerticesMustUpdate = true;
+  }
+
 }
 
 class Scene {
@@ -500,9 +595,10 @@ class Renderer {
 
 
   resetCanvas() {
-    while (this._canvas.firstChild) {
-      this._canvas.removeChild(this._canvas.firstChild);
-    }
+    this._canvas.innerHTML = '';
+    // while (this._canvas.firstChild) {
+    //   this._canvas.removeChild(this._canvas.firstChild)
+    // }
   }
 
 
@@ -560,7 +656,7 @@ class Renderer {
 
   _renderPointCloud(mesh, mvpMat) {
     const meshView = mesh.meshView;
-    const vertices = mesh.vertices;
+    const vertices = mesh.worldVertices;
     const camPosition = this._camera.position;
 
     meshView.reset();

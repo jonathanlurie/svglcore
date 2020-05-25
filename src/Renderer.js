@@ -52,9 +52,10 @@ class Renderer {
 
 
   resetCanvas() {
-    while (this._canvas.firstChild) {
-      this._canvas.removeChild(this._canvas.firstChild)
-    }
+    this._canvas.innerHTML = ''
+    // while (this._canvas.firstChild) {
+    //   this._canvas.removeChild(this._canvas.firstChild)
+    // }
   }
 
 
@@ -112,7 +113,7 @@ class Renderer {
 
   _renderPointCloud(mesh, mvpMat) {
     const meshView = mesh.meshView
-    const vertices = mesh.vertices
+    const vertices = mesh.worldVertices
     const camPosition = this._camera.position
 
     meshView.reset()
