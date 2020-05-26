@@ -1140,6 +1140,34 @@
     return out;
   }
   /**
+   * Creates a quaternion from the given euler angle x, y, z.
+   *
+   * @param {quat} out the receiving quaternion
+   * @param {x} Angle to rotate around X axis in degrees.
+   * @param {y} Angle to rotate around Y axis in degrees.
+   * @param {z} Angle to rotate around Z axis in degrees.
+   * @returns {quat} out
+   * @function
+   */
+
+  function fromEuler(out, x, y, z) {
+    var halfToRad = 0.5 * Math.PI / 180.0;
+    x *= halfToRad;
+    y *= halfToRad;
+    z *= halfToRad;
+    var sx = Math.sin(x);
+    var cx = Math.cos(x);
+    var sy = Math.sin(y);
+    var cy = Math.cos(y);
+    var sz = Math.sin(z);
+    var cz = Math.cos(z);
+    out[0] = sx * cy * cz - cx * sy * sz;
+    out[1] = cx * sy * cz + sx * cy * sz;
+    out[2] = cx * cy * sz - sx * sy * cz;
+    out[3] = cx * cy * cz + sx * sy * sz;
+    return out;
+  }
+  /**
    * Calculates the length of a quat
    *
    * @param {ReadonlyQuat} a vector to calculate length of
@@ -1352,7 +1380,9 @@
       this._boundingBox = {
         min: fromValues(0, 0, 0),
         max: fromValues(0, 0, 0),
+        center: fromValues(0, 0, 0),
       };
+      this._boundingBoxNeedsUpdate = true;
 
       this._scale = fromValues(1, 1, 1);
       this._quaternion = create$4();
@@ -1366,7 +1396,7 @@
       this._radius = 1;
 
       this._matrix = create$1();
-      this._worldVerticesMustUpdate = true;
+      this._worldVerticesNeedsUpdate = true;
     }
 
 
@@ -1416,6 +1446,7 @@
 
       this._vertices = v;
       this._worldVertices = new v.constructor(v.length);
+      this._boundingBoxNeedsUpdate = true;
       return this
     }
 
@@ -1426,8 +1457,7 @@
 
 
     get worldVertices() {
-
-      if (!this._worldVerticesMustUpdate) {
+      if (!this._worldVerticesNeedsUpdate) {
         return this._worldVertices
       }
 
@@ -1446,7 +1476,7 @@
         this._worldVertices[i + 2] = tmpVec3[2];
       }
 
-      this._worldVerticesMustUpdate = false;
+      this._worldVerticesNeedsUpdate = false;
       return this._worldVertices
     }
 
@@ -1503,7 +1533,7 @@
     /**
      * Note: the bounding box is in world coordinates
      */
-    computeBoundingBox() {
+    _computeBoundingBox() {
       if (this._vertices === null) {
         throw new Error('This mesh does not have any vertex.')
       }
@@ -1538,11 +1568,18 @@
       this._boundingBox.max[1] = Math.max(minInWorld[1], maxInWorld[1]);
       this._boundingBox.max[2] = Math.max(minInWorld[2], maxInWorld[2]);
 
-      return this
+      this._boundingBox.center[0] = (this._boundingBox.min[0] + this._boundingBox.max[0]) / 2;
+      this._boundingBox.center[1] = (this._boundingBox.min[1] + this._boundingBox.max[1]) / 2;
+      this._boundingBox.center[2] = (this._boundingBox.min[2] + this._boundingBox.max[2]) / 2;
+
+      this._boundingBoxNeedsUpdate = false;
     }
 
 
     get boundingBox() {
+      if (this._boundingBoxNeedsUpdate) {
+        this._computeBoundingBox();
+      }
       return this._boundingBox
     }
 
@@ -1559,8 +1596,8 @@
 
     set position(p) {
       this._position[0] = p[0];
-      this._position[2] = p[1];
-      this._position[3] = p[2];
+      this._position[1] = p[1];
+      this._position[2] = p[2];
       this.updateMatrix();
     }
 
@@ -1572,9 +1609,9 @@
 
     set quaternion(q) {
       this._quaternion[0] = q[0];
-      this._quaternion[2] = q[1];
-      this._quaternion[3] = q[2];
-      this._quaternion[4] = q[4];
+      this._quaternion[1] = q[1];
+      this._quaternion[2] = q[2];
+      this._quaternion[3] = q[3];
       this.updateMatrix();
     }
 
@@ -1594,7 +1631,14 @@
 
     updateMatrix() {
       fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale);
-      this._worldVerticesMustUpdate = true;
+      this._worldVerticesNeedsUpdate = true;
+      this._boundingBoxNeedsUpdate = true;
+    }
+
+
+    setRotationFromEulerDegree(x, y, z) {
+      fromEuler(this._quaternion, x, y, z);
+      this.updateMatrix();
     }
 
   }

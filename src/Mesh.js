@@ -19,7 +19,9 @@ class Mesh {
     this._boundingBox = {
       min: glmatrix.vec3.fromValues(0, 0, 0),
       max: glmatrix.vec3.fromValues(0, 0, 0),
+      center: glmatrix.vec3.fromValues(0, 0, 0),
     }
+    this._boundingBoxNeedsUpdate = true
 
     this._scale = glmatrix.vec3.fromValues(1, 1, 1)
     this._quaternion = glmatrix.quat.create()
@@ -33,7 +35,7 @@ class Mesh {
     this._radius = 1
 
     this._matrix = glmatrix.mat4.create()
-    this._worldVerticesMustUpdate = true
+    this._worldVerticesNeedsUpdate = true
   }
 
 
@@ -83,6 +85,7 @@ class Mesh {
 
     this._vertices = v
     this._worldVertices = new v.constructor(v.length)
+    this._boundingBoxNeedsUpdate = true
     return this
   }
 
@@ -93,8 +96,7 @@ class Mesh {
 
 
   get worldVertices() {
-
-    if (!this._worldVerticesMustUpdate) {
+    if (!this._worldVerticesNeedsUpdate) {
       return this._worldVertices
     }
 
@@ -113,7 +115,7 @@ class Mesh {
       this._worldVertices[i + 2] = tmpVec3[2]
     }
 
-    this._worldVerticesMustUpdate = false
+    this._worldVerticesNeedsUpdate = false
     return this._worldVertices
   }
 
@@ -170,7 +172,7 @@ class Mesh {
   /**
    * Note: the bounding box is in world coordinates
    */
-  computeBoundingBox() {
+  _computeBoundingBox() {
     if (this._vertices === null) {
       throw new Error('This mesh does not have any vertex.')
     }
@@ -205,11 +207,18 @@ class Mesh {
     this._boundingBox.max[1] = Math.max(minInWorld[1], maxInWorld[1])
     this._boundingBox.max[2] = Math.max(minInWorld[2], maxInWorld[2])
 
-    return this
+    this._boundingBox.center[0] = (this._boundingBox.min[0] + this._boundingBox.max[0]) / 2
+    this._boundingBox.center[1] = (this._boundingBox.min[1] + this._boundingBox.max[1]) / 2
+    this._boundingBox.center[2] = (this._boundingBox.min[2] + this._boundingBox.max[2]) / 2
+
+    this._boundingBoxNeedsUpdate = false
   }
 
 
   get boundingBox() {
+    if (this._boundingBoxNeedsUpdate) {
+      this._computeBoundingBox()
+    }
     return this._boundingBox
   }
 
@@ -226,8 +235,8 @@ class Mesh {
 
   set position(p) {
     this._position[0] = p[0]
-    this._position[2] = p[1]
-    this._position[3] = p[2]
+    this._position[1] = p[1]
+    this._position[2] = p[2]
     this.updateMatrix()
   }
 
@@ -239,9 +248,9 @@ class Mesh {
 
   set quaternion(q) {
     this._quaternion[0] = q[0]
-    this._quaternion[2] = q[1]
-    this._quaternion[3] = q[2]
-    this._quaternion[4] = q[4]
+    this._quaternion[1] = q[1]
+    this._quaternion[2] = q[2]
+    this._quaternion[3] = q[3]
     this.updateMatrix()
   }
 
@@ -261,7 +270,14 @@ class Mesh {
 
   updateMatrix() {
     glmatrix.mat4.fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale)
-    this._worldVerticesMustUpdate = true
+    this._worldVerticesNeedsUpdate = true
+    this._boundingBoxNeedsUpdate = true
+  }
+
+
+  setRotationFromEulerDegree(x, y, z) {
+    glmatrix.quat.fromEuler(this._quaternion, x, y, z)
+    this.updateMatrix()
   }
 
 }

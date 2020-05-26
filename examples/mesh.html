@@ -38,15 +38,17 @@
     
 
     const mesh = new svglcore.Mesh()
-    mesh.vertices = meshData.vertices.map((num) => num * 200)
+    mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
     mesh.verticesPerFace = meshData.vertices.length / meshData.faces.length
-    mesh.radius = 0.9
-    mesh.opacity = 0.5
-    mesh.scale = [2, 2, 2]
+    mesh.radius = 2
+    mesh.color = '#b00098'
+    mesh.opacity = 0.4
+    mesh.scale = [35, 35, 35]    
 
-    mesh.computeBoundingBox()
-    console.log(mesh.boundingBox)
+    // center the mesh on its center (world center)
+    mesh.position = mesh.boundingBox.center.map((coord) => -coord)
+    
     
 
     const scene = new svglcore.Scene()
@@ -54,14 +56,14 @@
 
     const camera = new svglcore.PerspectiveCamera(
       {
-        eye: [0, 0, -100],
-        center: [0, 0, 10],
+        eye: [0, 0, 500],
+        center: [0, 0, 0],
         up: [0, 1, 0]
       }
     )
     
     camera.aspectRatio = canvasSize.w / canvasSize.h
-    camera.fieldOfView = Math.PI / 4
+    camera.fieldOfView = Math.PI / 3
 
     const renderer = new svglcore.Renderer(
       parentDiv,
@@ -94,7 +96,7 @@
 
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      camera.dolly(evt.deltaY / 100.)
+      camera.dolly(evt.deltaY / 10.)
       renderer.render()
     })
 
