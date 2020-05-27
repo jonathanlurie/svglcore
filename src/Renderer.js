@@ -93,6 +93,9 @@ class Renderer {
         case RENDER_MODES.POINT_CLOUD:
           this._renderPointCloud(mesh, modelViewProjMat)
           break
+        case RENDER_MODES.TRIANGLE_WIREFRAME:
+          this._renderEdges(mesh, modelViewProjMat)
+          break
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     })
@@ -139,6 +142,60 @@ class Renderer {
       const mesh2camDistance = ((vertices[i] - camPosition[0]) ** 2 + (vertices[i + 1] - camPosition[1]) ** 2 + (vertices[i + 2] - camPosition[2]) ** 2) ** 0.5
       const radius = (mesh.radius / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2)
       meshView.addCircle(canvasPos[0], canvasPos[1], radius)
+    }
+
+    this._canvas.appendChild(meshView.view)
+  }
+
+
+
+
+
+  _renderEdges(mesh, mvpMat) {
+    const meshView = mesh.meshView
+    const vertices = mesh.worldVertices
+    const uniqueEdges = mesh.uniqueEdges
+    const camPosition = this._camera.position
+
+    meshView.reset()
+    const tmpVectorA = glmatrix.vec3.create()
+    const tmpVectorB = glmatrix.vec3.create()
+
+    for (let i = 0; i < uniqueEdges.length; i += 2) {
+      const vertIndexA = uniqueEdges[i]
+      const vertIndexB = uniqueEdges[i + 1]
+
+      glmatrix.vec3.transformMat4(tmpVectorA, [vertices[3 * vertIndexA], vertices[3 * vertIndexA + 1], vertices[3 * vertIndexA + 2]], mvpMat)
+      glmatrix.vec3.transformMat4(tmpVectorB, [vertices[3 * vertIndexB], vertices[3 * vertIndexB + 1], vertices[3 * vertIndexB + 2]], mvpMat)
+
+      // No rendering if the two points are outside of projection  canonical/frustrum box
+      if ((tmpVectorA[0] >= 1
+      || tmpVectorA[0] <= -1
+      || tmpVectorA[1] >= 1
+      || tmpVectorA[1] <= -1
+      || tmpVectorA[2] >= 1
+      || tmpVectorA[2] <= -1)
+      && (tmpVectorB[0] >= 1
+      || tmpVectorB[0] <= -1
+      || tmpVectorB[1] >= 1
+      || tmpVectorB[1] <= -1
+      || tmpVectorB[2] >= 1
+      || tmpVectorB[2] <= -1)) {
+        continue
+      }
+
+      const middlePoint = [
+        (tmpVectorA[0] + tmpVectorB[0]) / 2,
+        (tmpVectorA[1] + tmpVectorB[1]) / 2,
+        (tmpVectorA[2] + tmpVectorB[2]) / 2,
+      ]
+
+      const mesh2camDistance = ((middlePoint[0] - camPosition[0]) ** 2 + (middlePoint[1] - camPosition[1]) ** 2 + (middlePoint[2] - camPosition[2]) ** 2) ** 0.5
+      const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2)
+      const canvasPosA = this._unit2DPositionToCanvasPosition(tmpVectorA)
+      const canvasPosB = this._unit2DPositionToCanvasPosition(tmpVectorB)
+
+      meshView.addLine(canvasPosA[0], canvasPosA[1], canvasPosB[0], canvasPosB[1], thickness)
     }
 
     this._canvas.appendChild(meshView.view)

@@ -15,6 +15,7 @@ class Mesh {
     this._vertices = null
     this._worldVertices = null
     this._faces = null
+    this._uniqueEdges = null
     this._verticesPerFace = 3
     this._boundingBox = {
       min: glmatrix.vec3.fromValues(0, 0, 0),
@@ -267,6 +268,13 @@ class Mesh {
     this.updateMatrix()
   }
 
+  get uniqueEdges() {
+    if (!this._uniqueEdges) {
+      this._computeUniqueEdges()
+    }
+    return this._uniqueEdges
+  }
+
 
   updateMatrix() {
     glmatrix.mat4.fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale)
@@ -279,6 +287,57 @@ class Mesh {
     glmatrix.quat.fromEuler(this._quaternion, x, y, z)
     this.updateMatrix()
   }
+
+
+  _computeUniqueEdges() {
+    if (this._faces === null) {
+      throw new Error('The faces must be set before computing unique edges.')
+    }
+
+    const f = this._faces
+    const vpf = this._verticesPerFace
+
+    const verticePairs = {}
+
+    for (let i = 0; i < f.length; i += vpf) {
+      for (let j = 1; j < vpf; j += 1) {
+        const verticeA = f[i + j - 1]
+        const verticeB = f[i + j]
+        let verticeLowerIndex = null
+        let verticeHigherIndex = null
+
+        if (verticeA < verticeB) {
+          verticeLowerIndex = verticeA
+          verticeHigherIndex = verticeB
+        } else {
+          verticeLowerIndex = verticeB
+          verticeHigherIndex = verticeA
+        }
+
+        if (!(verticeLowerIndex in verticePairs)) {
+          verticePairs[verticeLowerIndex] = new Set()
+        }
+
+        verticePairs[verticeLowerIndex].add(verticeHigherIndex)
+      }
+    }
+
+    const tmp = []
+    const allFirtVertices = Object.keys(verticePairs).map((index) => parseInt(index, 10))
+
+    for (let i = 0; i < allFirtVertices.length; i += 1) {
+      const firstVertex = allFirtVertices[i]
+      const it = verticePairs[firstVertex].entries()
+      // eslint-disable-next-line no-restricted-syntax
+      for (let secondVertex of it) {
+        tmp.push(firstVertex, secondVertex[0])
+      }
+    }
+
+    this._uniqueEdges = new Uint32Array(tmp)
+  }
+
+
 
 }
 

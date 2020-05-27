@@ -35,6 +35,9 @@ class MeshView {
 
     this._circlePool = [];
     this._circlePoolCounter = 0;
+
+    this._linePool = [];
+    this._linePoolCounter = 0;
   }
 
 
@@ -87,6 +90,33 @@ class MeshView {
     circle.setAttributeNS(null, 'stroke-width', 0);
     this._view.appendChild(circle);
   }
+
+
+  addLine(xA, yA, xB, yB, thickness) {
+    let line = null;
+
+    // the pool is not large enough, we create a new line
+    if (this._linePool.length < this._linePoolCounter + 1 ) {
+      line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line');
+      this._linePool.push(line);
+    } else {
+    // The pool is large enough, we borrow a circle from the pool
+      line = this._linePool[this._linePoolCounter];
+    }
+
+    this._linePoolCounter += 1;
+
+    line.setAttributeNS(null, 'x1', xA);
+    line.setAttributeNS(null, 'y1', yA);
+    line.setAttributeNS(null, 'x2', xB);
+    line.setAttributeNS(null, 'y2', yB);
+    // line.setAttributeNS(null, 'id', this._mesh.id)
+    line.setAttributeNS(null, 'fill', null);
+    line.setAttributeNS(null, 'opacity', this._mesh.opacity);
+    line.setAttributeNS(null, 'stroke-width', thickness);
+    line.setAttributeNS(null, 'stroke', this._mesh.color);
+    this._view.appendChild(line);
+  }
 }
 
 class Mesh {
@@ -101,6 +131,7 @@ class Mesh {
     this._vertices = null;
     this._worldVertices = null;
     this._faces = null;
+    this._uniqueEdges = null;
     this._verticesPerFace = 3;
     this._boundingBox = {
       min: vec3.fromValues(0, 0, 0),
@@ -353,6 +384,13 @@ class Mesh {
     this.updateMatrix();
   }
 
+  get uniqueEdges() {
+    if (!this._uniqueEdges) {
+      this._computeUniqueEdges();
+    }
+    return this._uniqueEdges
+  }
+
 
   updateMatrix() {
     mat4.fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale);
@@ -365,6 +403,57 @@ class Mesh {
     quat.fromEuler(this._quaternion, x, y, z);
     this.updateMatrix();
   }
+
+
+  _computeUniqueEdges() {
+    if (this._faces === null) {
+      throw new Error('The faces must be set before computing unique edges.')
+    }
+
+    const f = this._faces;
+    const vpf = this._verticesPerFace;
+
+    const verticePairs = {};
+
+    for (let i = 0; i < f.length; i += vpf) {
+      for (let j = 1; j < vpf; j += 1) {
+        const verticeA = f[i + j - 1];
+        const verticeB = f[i + j];
+        let verticeLowerIndex = null;
+        let verticeHigherIndex = null;
+
+        if (verticeA < verticeB) {
+          verticeLowerIndex = verticeA;
+          verticeHigherIndex = verticeB;
+        } else {
+          verticeLowerIndex = verticeB;
+          verticeHigherIndex = verticeA;
+        }
+
+        if (!(verticeLowerIndex in verticePairs)) {
+          verticePairs[verticeLowerIndex] = new Set();
+        }
+
+        verticePairs[verticeLowerIndex].add(verticeHigherIndex);
+      }
+    }
+
+    const tmp = [];
+    const allFirtVertices = Object.keys(verticePairs).map((index) => parseInt(index, 10));
+
+    for (let i = 0; i < allFirtVertices.length; i += 1) {
+      const firstVertex = allFirtVertices[i];
+      const it = verticePairs[firstVertex].entries();
+      // eslint-disable-next-line no-restricted-syntax
+      for (let secondVertex of it) {
+        tmp.push(firstVertex, secondVertex[0]);
+      }
+    }
+
+    this._uniqueEdges = new Uint32Array(tmp);
+  }
+
+
 
 }
 
@@ -650,6 +739,9 @@ class Renderer {
         case RENDER_MODES.POINT_CLOUD:
           this._renderPointCloud(mesh, modelViewProjMat);
           break
+        case RENDER_MODES.TRIANGLE_WIREFRAME:
+          this._renderEdges(mesh, modelViewProjMat);
+          break
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     });
@@ -696,6 +788,60 @@ class Renderer {
       const mesh2camDistance = ((vertices[i] - camPosition[0]) ** 2 + (vertices[i + 1] - camPosition[1]) ** 2 + (vertices[i + 2] - camPosition[2]) ** 2) ** 0.5;
       const radius = (mesh.radius / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2);
       meshView.addCircle(canvasPos[0], canvasPos[1], radius);
+    }
+
+    this._canvas.appendChild(meshView.view);
+  }
+
+
+
+
+
+  _renderEdges(mesh, mvpMat) {
+    const meshView = mesh.meshView;
+    const vertices = mesh.worldVertices;
+    const uniqueEdges = mesh.uniqueEdges;
+    const camPosition = this._camera.position;
+
+    meshView.reset();
+    const tmpVectorA = vec3.create();
+    const tmpVectorB = vec3.create();
+
+    for (let i = 0; i < uniqueEdges.length; i += 2) {
+      const vertIndexA = uniqueEdges[i];
+      const vertIndexB = uniqueEdges[i + 1];
+
+      vec3.transformMat4(tmpVectorA, [vertices[3 * vertIndexA], vertices[3 * vertIndexA + 1], vertices[3 * vertIndexA + 2]], mvpMat);
+      vec3.transformMat4(tmpVectorB, [vertices[3 * vertIndexB], vertices[3 * vertIndexB + 1], vertices[3 * vertIndexB + 2]], mvpMat);
+
+      // No rendering if the two points are outside of projection  canonical/frustrum box
+      if ((tmpVectorA[0] >= 1
+      || tmpVectorA[0] <= -1
+      || tmpVectorA[1] >= 1
+      || tmpVectorA[1] <= -1
+      || tmpVectorA[2] >= 1
+      || tmpVectorA[2] <= -1)
+      && (tmpVectorB[0] >= 1
+      || tmpVectorB[0] <= -1
+      || tmpVectorB[1] >= 1
+      || tmpVectorB[1] <= -1
+      || tmpVectorB[2] >= 1
+      || tmpVectorB[2] <= -1)) {
+        continue
+      }
+
+      const middlePoint = [
+        (tmpVectorA[0] + tmpVectorB[0]) / 2,
+        (tmpVectorA[1] + tmpVectorB[1]) / 2,
+        (tmpVectorA[2] + tmpVectorB[2]) / 2,
+      ];
+
+      const mesh2camDistance = ((middlePoint[0] - camPosition[0]) ** 2 + (middlePoint[1] - camPosition[1]) ** 2 + (middlePoint[2] - camPosition[2]) ** 2) ** 0.5;
+      const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2);
+      const canvasPosA = this._unit2DPositionToCanvasPosition(tmpVectorA);
+      const canvasPosB = this._unit2DPositionToCanvasPosition(tmpVectorB);
+
+      meshView.addLine(canvasPosA[0], canvasPosA[1], canvasPosB[0], canvasPosB[1], thickness);
     }
 
     this._canvas.appendChild(meshView.view);
