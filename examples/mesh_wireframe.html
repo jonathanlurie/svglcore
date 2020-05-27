@@ -1,0 +1,112 @@
+<html>
+<head>
+  <title>Test</title>
+
+  <style>
+    #parent {
+      width: fit-content;
+      height: fit-content;
+      border: grey solid 1px;
+    }
+  </style>
+</head>
+<body>
+  <!-- importing the automatically build module -->
+  <script src="../dist/svglcore.umd.js"></script>
+
+  <div id="parent"></div>
+
+  <script>
+
+  async function main(){
+    const parentDiv = document.getElementById('parent')
+    let mouseDown = false
+
+    const objRes = await fetch('meshes/bunny_4.obj')
+    const objStr = await objRes.text()
+
+    const meshData = svglcore.ObjParser.parse(objStr)
+
+    console.log(meshData)
+    
+
+
+    const canvasSize = {
+      w: 1000,
+      h: 600
+    }
+    
+
+    const mesh = new svglcore.Mesh()
+    mesh.vertices = meshData.vertices
+    mesh.faces = meshData.faces
+    mesh.lineThickness = 1.5
+    mesh.color = '#b00098'
+    mesh.opacity = 0.4
+    mesh.scale = [35, 35, 35]    
+
+    // center the mesh on its center (world center)
+    mesh.position = mesh.boundingBox.center.map((coord) => -coord)
+    
+    mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+    
+    
+
+    const scene = new svglcore.Scene()
+    scene.add(mesh)
+
+    const camera = new svglcore.PerspectiveCamera(
+      {
+        eye: [0, 0, 500],
+        center: [0, 0, 0],
+        up: [0, 1, 0]
+      }
+    )
+    
+    camera.aspectRatio = canvasSize.w / canvasSize.h
+    camera.fieldOfView = Math.PI / 4
+
+    const renderer = new svglcore.Renderer(
+      parentDiv,
+      {
+        width: canvasSize.w,
+        height: canvasSize.h,
+        camera: camera,
+        scene: scene
+      })
+
+    renderer.render()
+
+
+    parentDiv.addEventListener('mousedown', (evt) => {
+      mouseDown = true
+    })
+
+    parentDiv.addEventListener('mouseup', (evt) => {
+      mouseDown = false
+    })
+
+    parentDiv.addEventListener('mousemove', (evt) => {
+      if (mouseDown) {
+        camera.rotate(
+          [-evt.movementX * 0.005, -evt.movementY * 0.005]
+        )
+        renderer.render()
+      }
+    })
+
+    parentDiv.addEventListener('wheel', (evt) => {
+      event.preventDefault()
+      camera.dolly(evt.deltaY / 10.)
+      renderer.render()
+    })
+
+  }
+
+  main()
+
+    
+  </script>
+
+</body>
+</html>
