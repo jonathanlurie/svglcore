@@ -60,6 +60,7 @@ class MeshView {
     //   this._view.removeChild(this._view.firstChild)
     // }
     this._circlePoolCounter = 0;
+    this._linePoolCounter = 0;
   }
 
 
@@ -87,9 +88,8 @@ class MeshView {
     circle.setAttributeNS(null, 'cy', y);
     circle.setAttributeNS(null, 'r', radius);
     // circle.setAttributeNS(null, 'id', this._mesh.id)
-    circle.setAttributeNS(null, 'fill', this._mesh.color);
-    circle.setAttributeNS(null, 'opacity', this._mesh.opacity);
-    circle.setAttributeNS(null, 'stroke-width', 0);
+    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.color}; opacity: ${this._mesh.opacity}; stroke-width: 0;`);
+
     this._view.appendChild(circle);
   }
 
@@ -107,16 +107,12 @@ class MeshView {
     }
 
     this._linePoolCounter += 1;
-
     line.setAttributeNS(null, 'x1', xA);
     line.setAttributeNS(null, 'y1', yA);
     line.setAttributeNS(null, 'x2', xB);
     line.setAttributeNS(null, 'y2', yB);
     // line.setAttributeNS(null, 'id', this._mesh.id)
-    line.setAttributeNS(null, 'fill', null);
-    line.setAttributeNS(null, 'opacity', this._mesh.opacity);
-    line.setAttributeNS(null, 'stroke-width', thickness);
-    line.setAttributeNS(null, 'stroke', this._mesh.color);
+    line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.color}`);
     this._view.appendChild(line);
   }
 }
