@@ -25,7 +25,7 @@
     const parentDiv = document.getElementById('parent')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_lo.obj')
+    const objRes = await fetch('meshes/bunny_med.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -43,12 +43,12 @@
     const mesh = new svglcore.Mesh()
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
-    mesh.lineThickness = 0.8
+    mesh.lineThickness = 0.5
     mesh.color = 'white'
     mesh.opacity = 0.6
     mesh.scale = [35, 35, 35]   
     
-    console.log(mesh.uniqueEdges)
+    console.log(mesh.boundingBox)
     
 
     // center the mesh on its center (world center)
@@ -84,10 +84,14 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
+      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      needRender = true
     })
 
     parentDiv.addEventListener('mouseup', (evt) => {
       mouseDown = false
+      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+      needRender = true
     })
 
     parentDiv.addEventListener('mousemove', (evt) => {
@@ -99,10 +103,22 @@
       }
     })
 
+    let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
+      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
       camera.dolly(evt.deltaY / 10.)
       needRender = true
+
+      if(timer !== null) {
+        clearTimeout(timer)
+        
+      }
+
+      timer = setTimeout(function() {
+        mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+        needRender = true
+      }, 50)
     })
 
 

@@ -17,6 +17,7 @@ var RENDER_MODES = {
   POINT_CLOUD: 0,
   POLYLINE: 1,
   TRIANGLE_WIREFRAME: 2,
+  TRIANGLE_WIREFRAME_RANDOM_SUB: 3,
 };
 
 var CONSTANTS = {
@@ -684,7 +685,7 @@ class PerspectiveCamera {
 
 }
 
-/* eslint-disable no-continue */
+/* eslint-disable no-bitwise */
 
 class Renderer {
   constructor(parentDiv, options) {
@@ -777,6 +778,9 @@ class Renderer {
         case RENDER_MODES.TRIANGLE_WIREFRAME:
           this._renderEdges(mesh, modelViewProjMat);
           break
+        case RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB:
+          this._renderEdgesRandomSub(mesh, modelViewProjMat);
+          break
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     });
@@ -829,9 +833,6 @@ class Renderer {
   }
 
 
-
-
-
   _renderEdges(mesh, mvpMat) {
     const meshView = mesh.meshView;
     const vertices = mesh.worldVertices;
@@ -881,6 +882,82 @@ class Renderer {
 
     this._canvas.appendChild(meshView.view);
   }
+
+
+
+
+
+
+
+
+
+
+
+  _renderEdgesRandomSub(mesh, mvpMat) {
+    const meshView = mesh.meshView;
+    const vertices = mesh.worldVertices;
+    const uniqueEdges = mesh.uniqueEdges;
+    const camPosition = this._camera.position;
+
+    const edgesToRender = Math.min(750, mesh.uniqueEdges.length / 2);
+
+
+    meshView.reset();
+    const tmpVectorA = vec3.create();
+    const tmpVectorB = vec3.create();
+
+    const alreadyRenderedEdgeIndex = {};
+    let i = 0;
+
+    while (i < edgesToRender) {
+      const edgeIndex = ~~(Math.random() * ((mesh.uniqueEdges.length - 1) * 0.5));
+
+      if (edgeIndex in alreadyRenderedEdgeIndex) {
+        continue
+      } else {
+        alreadyRenderedEdgeIndex[edgeIndex] = true;
+        i += 1;
+      }
+
+      const vertIndexA = uniqueEdges[edgeIndex * 2];
+      const vertIndexB = uniqueEdges[edgeIndex * 2 + 1];
+
+      vec3.transformMat4(tmpVectorA, [vertices[3 * vertIndexA], vertices[3 * vertIndexA + 1], vertices[3 * vertIndexA + 2]], mvpMat);
+      vec3.transformMat4(tmpVectorB, [vertices[3 * vertIndexB], vertices[3 * vertIndexB + 1], vertices[3 * vertIndexB + 2]], mvpMat);
+
+      // No rendering if the two points are outside of projection  canonical/frustrum box
+      if ((tmpVectorA[0] >= 1
+      || tmpVectorA[0] <= -1
+      || tmpVectorA[1] >= 1
+      || tmpVectorA[1] <= -1
+      || tmpVectorA[2] >= 1
+      || tmpVectorA[2] <= -1)
+      && (tmpVectorB[0] >= 1
+      || tmpVectorB[0] <= -1
+      || tmpVectorB[1] >= 1
+      || tmpVectorB[1] <= -1
+      || tmpVectorB[2] >= 1
+      || tmpVectorB[2] <= -1)) {
+        continue
+      }
+
+      const middlePoint = [
+        (tmpVectorA[0] + tmpVectorB[0]) / 2,
+        (tmpVectorA[1] + tmpVectorB[1]) / 2,
+        (tmpVectorA[2] + tmpVectorB[2]) / 2,
+      ];
+
+      const mesh2camDistance = ((middlePoint[0] - camPosition[0]) ** 2 + (middlePoint[1] - camPosition[1]) ** 2 + (middlePoint[2] - camPosition[2]) ** 2) ** 0.5;
+      const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * mesh2camDistance)) * (this._height / 2);
+      const canvasPosA = this._unit2DPositionToCanvasPosition(tmpVectorA);
+      const canvasPosB = this._unit2DPositionToCanvasPosition(tmpVectorB);
+
+      meshView.addLine(canvasPosA[0], canvasPosA[1], canvasPosB[0], canvasPosB[1], thickness);
+    }
+
+    this._canvas.appendChild(meshView.view);
+  }
+
 }
 
 class ObjParser {
