@@ -22,7 +22,7 @@
     const parentDiv = document.getElementById('parent')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_4.obj')
+    const objRes = await fetch('meshes/bunny_lo.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -53,7 +53,7 @@
     
 
     const scene = new svglcore.Scene()
-    scene.add(mesh)
+    scene.add(mesh
 
     const camera = new svglcore.PerspectiveCamera(
       {

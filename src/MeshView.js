@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import CONSTANTS from './Constants'
 
 /**
@@ -41,16 +42,16 @@ class MeshView {
 
 
   /**
-   * 
-   * @param {*} x 
-   * @param {*} y 
-   * @param {*} radius 
+   *
+   * @param {*} x
+   * @param {*} y
+   * @param {*} radius
    */
   addCircle(x, y, radius) {
     let circle = null
 
     // the pool is not large enough, we create a new circle
-    if (this._circlePool.length < this._circlePoolCounter + 1 ) {
+    if (this._circlePool.length < this._circlePoolCounter + 1) {
       circle = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'circle')
       this._circlePool.push(circle)
     } else {
@@ -74,7 +75,7 @@ class MeshView {
     let line = null
 
     // the pool is not large enough, we create a new line
-    if (this._linePool.length < this._linePoolCounter + 1 ) {
+    if (this._linePool.length < this._linePoolCounter + 1) {
       line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line')
       this._linePool.push(line)
     } else {

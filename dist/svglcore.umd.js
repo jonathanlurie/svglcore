@@ -1297,6 +1297,8 @@
     SVG_NAMESPACE: 'http://www.w3.org/2000/svg',
   };
 
+  /* eslint-disable no-undef */
+
   /**
    * A MeshView is a rendered SVG version of a given Mesh.
    * Each Mesh is associated to a MeshView
@@ -1338,16 +1340,16 @@
 
 
     /**
-     * 
-     * @param {*} x 
-     * @param {*} y 
-     * @param {*} radius 
+     *
+     * @param {*} x
+     * @param {*} y
+     * @param {*} radius
      */
     addCircle(x, y, radius) {
       let circle = null;
 
       // the pool is not large enough, we create a new circle
-      if (this._circlePool.length < this._circlePoolCounter + 1 ) {
+      if (this._circlePool.length < this._circlePoolCounter + 1) {
         circle = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'circle');
         this._circlePool.push(circle);
       } else {
@@ -1371,7 +1373,7 @@
       let line = null;
 
       // the pool is not large enough, we create a new line
-      if (this._linePool.length < this._linePoolCounter + 1 ) {
+      if (this._linePool.length < this._linePoolCounter + 1) {
         line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line');
         this._linePool.push(line);
       } else {
@@ -1483,11 +1485,24 @@
     }
 
 
-    get worldVertices() {
-      if (!this._worldVerticesNeedsUpdate) {
-        return this._worldVertices
+    get nbVertices() {
+      if (this._vertices === null) {
+        return 0
+      } else {
+        return this._vertices.length / 3
       }
+    }
 
+
+    get worldVertices() {
+      if (this._worldVerticesNeedsUpdate) {
+        this._computeWorldVertices();
+      }
+      return this._worldVertices
+    }
+
+
+    _computeWorldVertices() {
       const mat = this.modelMatrix;
       const tmpVec3 = create$2();
       const vert = this._vertices;
@@ -1504,7 +1519,6 @@
       }
 
       this._worldVerticesNeedsUpdate = false;
-      return this._worldVertices
     }
 
 
@@ -1565,6 +1579,10 @@
         throw new Error('This mesh does not have any vertex.')
       }
 
+      if (this._worldVerticesNeedsUpdate) {
+        this._computeWorldVertices();
+      }
+
       let minx = +Infinity;
       let miny = +Infinity;
       let minz = +Infinity;
@@ -1572,28 +1590,21 @@
       let maxy = -Infinity;
       let maxz = -Infinity;
 
-      for (let i = 0; i < this._vertices.length; i += 3) {
-        minx = Math.min(minx, this._vertices[i]);
-        miny = Math.min(miny, this._vertices[i + 1]);
-        minz = Math.min(minz, this._vertices[i + 2]);
-        maxx = Math.max(maxx, this._vertices[i]);
-        maxy = Math.max(maxy, this._vertices[i + 1]);
-        maxz = Math.max(maxz, this._vertices[i + 2]);
+      for (let i = 0; i < this._worldVertices.length; i += 3) {
+        minx = Math.min(minx, this._worldVertices[i]);
+        miny = Math.min(miny, this._worldVertices[i + 1]);
+        minz = Math.min(minz, this._worldVertices[i + 2]);
+        maxx = Math.max(maxx, this._worldVertices[i]);
+        maxy = Math.max(maxy, this._worldVertices[i + 1]);
+        maxz = Math.max(maxz, this._worldVertices[i + 2]);
       }
 
-      const modelMat = this.modelMatrix;
-      const minInWorld = create$2();
-      const maxInWorld = create$2();
-      transformMat4(minInWorld, [minx, miny, minz], modelMat);
-      transformMat4(maxInWorld, [maxx, maxy, maxz], modelMat);
-
-      // if the model matrix encodes a rotation, min and max could be swapped on some dimensions
-      this._boundingBox.min[0] = Math.min(minInWorld[0], maxInWorld[0]);
-      this._boundingBox.min[1] = Math.min(minInWorld[1], maxInWorld[1]);
-      this._boundingBox.min[2] = Math.min(minInWorld[2], maxInWorld[2]);
-      this._boundingBox.max[0] = Math.max(minInWorld[0], maxInWorld[0]);
-      this._boundingBox.max[1] = Math.max(minInWorld[1], maxInWorld[1]);
-      this._boundingBox.max[2] = Math.max(minInWorld[2], maxInWorld[2]);
+      this._boundingBox.min[0] = minx;
+      this._boundingBox.min[1] = miny;
+      this._boundingBox.min[2] = minz;
+      this._boundingBox.max[0] = maxx;
+      this._boundingBox.max[1] = maxy;
+      this._boundingBox.max[2] = maxz;
 
       this._boundingBox.center[0] = (this._boundingBox.min[0] + this._boundingBox.max[0]) / 2;
       this._boundingBox.center[1] = (this._boundingBox.min[1] + this._boundingBox.max[1]) / 2;
@@ -1653,6 +1664,10 @@
       this._scale[1] = s[1];
       this._scale[2] = s[2];
       this.updateMatrix();
+    }
+
+    get scale() {
+      return this._scale.slice()
     }
 
     get uniqueEdges() {
@@ -1722,6 +1737,29 @@
       }
 
       this._uniqueEdges = new Uint32Array(tmp);
+    }
+
+
+    /**
+     * Create a clone of this mesh with no shared structure. Can downsample the number of vertices
+     * @param {*} nbVertices
+     */
+    clone() {
+      const cpMesh = new Mesh();
+      cpMesh.renderMode = this.renderMode;
+      cpMesh.position = this.position;
+      cpMesh.quaternion = this.quaternion;
+      cpMesh.scale = this.scale;
+      cpMesh.verticesPerFace = this.verticesPerFace;
+      cpMesh.color = this.color;
+      cpMesh.opacity = this.opacity;
+      cpMesh.radius = this.radius;
+      cpMesh.lineThickness = this.lineThickness;
+
+      cpMesh.vertices = this._vertices ? this._vertices.slice() : null;
+      cpMesh.faces = this._faces ? this._faces.slice() : null;
+
+      return cpMesh
     }
 
 

@@ -1,6 +1,9 @@
 'use strict';
 
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
 var glmatrix = require('gl-matrix');
+var parseWFObj = _interopDefault(require('wavefront-obj-parser'));
 
 /* eslint-disable no-mixed-operators */
 /* eslint-disable no-bitwise */
@@ -23,6 +26,8 @@ var RENDER_MODES = {
 var CONSTANTS = {
   SVG_NAMESPACE: 'http://www.w3.org/2000/svg',
 };
+
+/* eslint-disable no-undef */
 
 /**
  * A MeshView is a rendered SVG version of a given Mesh.
@@ -65,16 +70,16 @@ class MeshView {
 
 
   /**
-   * 
-   * @param {*} x 
-   * @param {*} y 
-   * @param {*} radius 
+   *
+   * @param {*} x
+   * @param {*} y
+   * @param {*} radius
    */
   addCircle(x, y, radius) {
     let circle = null;
 
     // the pool is not large enough, we create a new circle
-    if (this._circlePool.length < this._circlePoolCounter + 1 ) {
+    if (this._circlePool.length < this._circlePoolCounter + 1) {
       circle = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'circle');
       this._circlePool.push(circle);
     } else {
@@ -98,7 +103,7 @@ class MeshView {
     let line = null;
 
     // the pool is not large enough, we create a new line
-    if (this._linePool.length < this._linePoolCounter + 1 ) {
+    if (this._linePool.length < this._linePoolCounter + 1) {
       line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line');
       this._linePool.push(line);
     } else {
@@ -210,11 +215,24 @@ class Mesh {
   }
 
 
-  get worldVertices() {
-    if (!this._worldVerticesNeedsUpdate) {
-      return this._worldVertices
+  get nbVertices() {
+    if (this._vertices === null) {
+      return 0
+    } else {
+      return this._vertices.length / 3
     }
+  }
 
+
+  get worldVertices() {
+    if (this._worldVerticesNeedsUpdate) {
+      this._computeWorldVertices();
+    }
+    return this._worldVertices
+  }
+
+
+  _computeWorldVertices() {
     const mat = this.modelMatrix;
     const tmpVec3 = glmatrix.vec3.create();
     const vert = this._vertices;
@@ -231,7 +249,6 @@ class Mesh {
     }
 
     this._worldVerticesNeedsUpdate = false;
-    return this._worldVertices
   }
 
 
@@ -292,6 +309,10 @@ class Mesh {
       throw new Error('This mesh does not have any vertex.')
     }
 
+    if (this._worldVerticesNeedsUpdate) {
+      this._computeWorldVertices();
+    }
+
     let minx = +Infinity;
     let miny = +Infinity;
     let minz = +Infinity;
@@ -299,28 +320,21 @@ class Mesh {
     let maxy = -Infinity;
     let maxz = -Infinity;
 
-    for (let i = 0; i < this._vertices.length; i += 3) {
-      minx = Math.min(minx, this._vertices[i]);
-      miny = Math.min(miny, this._vertices[i + 1]);
-      minz = Math.min(minz, this._vertices[i + 2]);
-      maxx = Math.max(maxx, this._vertices[i]);
-      maxy = Math.max(maxy, this._vertices[i + 1]);
-      maxz = Math.max(maxz, this._vertices[i + 2]);
+    for (let i = 0; i < this._worldVertices.length; i += 3) {
+      minx = Math.min(minx, this._worldVertices[i]);
+      miny = Math.min(miny, this._worldVertices[i + 1]);
+      minz = Math.min(minz, this._worldVertices[i + 2]);
+      maxx = Math.max(maxx, this._worldVertices[i]);
+      maxy = Math.max(maxy, this._worldVertices[i + 1]);
+      maxz = Math.max(maxz, this._worldVertices[i + 2]);
     }
 
-    const modelMat = this.modelMatrix;
-    const minInWorld = glmatrix.vec3.create();
-    const maxInWorld = glmatrix.vec3.create();
-    glmatrix.vec3.transformMat4(minInWorld, [minx, miny, minz], modelMat);
-    glmatrix.vec3.transformMat4(maxInWorld, [maxx, maxy, maxz], modelMat);
-
-    // if the model matrix encodes a rotation, min and max could be swapped on some dimensions
-    this._boundingBox.min[0] = Math.min(minInWorld[0], maxInWorld[0]);
-    this._boundingBox.min[1] = Math.min(minInWorld[1], maxInWorld[1]);
-    this._boundingBox.min[2] = Math.min(minInWorld[2], maxInWorld[2]);
-    this._boundingBox.max[0] = Math.max(minInWorld[0], maxInWorld[0]);
-    this._boundingBox.max[1] = Math.max(minInWorld[1], maxInWorld[1]);
-    this._boundingBox.max[2] = Math.max(minInWorld[2], maxInWorld[2]);
+    this._boundingBox.min[0] = minx;
+    this._boundingBox.min[1] = miny;
+    this._boundingBox.min[2] = minz;
+    this._boundingBox.max[0] = maxx;
+    this._boundingBox.max[1] = maxy;
+    this._boundingBox.max[2] = maxz;
 
     this._boundingBox.center[0] = (this._boundingBox.min[0] + this._boundingBox.max[0]) / 2;
     this._boundingBox.center[1] = (this._boundingBox.min[1] + this._boundingBox.max[1]) / 2;
@@ -380,6 +394,10 @@ class Mesh {
     this._scale[1] = s[1];
     this._scale[2] = s[2];
     this.updateMatrix();
+  }
+
+  get scale() {
+    return this._scale.slice()
   }
 
   get uniqueEdges() {
@@ -449,6 +467,29 @@ class Mesh {
     }
 
     this._uniqueEdges = new Uint32Array(tmp);
+  }
+
+
+  /**
+   * Create a clone of this mesh with no shared structure. Can downsample the number of vertices
+   * @param {*} nbVertices
+   */
+  clone() {
+    const cpMesh = new Mesh();
+    cpMesh.renderMode = this.renderMode;
+    cpMesh.position = this.position;
+    cpMesh.quaternion = this.quaternion;
+    cpMesh.scale = this.scale;
+    cpMesh.verticesPerFace = this.verticesPerFace;
+    cpMesh.color = this.color;
+    cpMesh.opacity = this.opacity;
+    cpMesh.radius = this.radius;
+    cpMesh.lineThickness = this.lineThickness;
+
+    cpMesh.vertices = this._vertices ? this._vertices.slice() : null;
+    cpMesh.faces = this._faces ? this._faces.slice() : null;
+
+    return cpMesh
   }
 
 
@@ -846,60 +887,9 @@ class Renderer {
   }
 }
 
-var wavefrontObjParser = ParseWavefrontObj;
-
-// Map .obj vertex info line names to our returned property names
-var vertexInfoNameMap = {v: 'vertexPositions', vt: 'vertexUVs', vn: 'vertexNormals'};
-
-function ParseWavefrontObj (wavefrontString) {
-
-  var parsedJSON = {vertexNormals: [], vertexUVs: [], vertexPositions: [], vertexNormalIndices: [], vertexUVIndices: [], vertexPositionIndices: []};
-
-  var linesInWavefrontObj = wavefrontString.split('\n');
-
-  var currentLine, currentLineTokens, vertexInfoType, i, k;
-
-  // Loop through and parse every line in our .obj file
-  for (i = 0; i < linesInWavefrontObj.length; i++) {
-    currentLine = linesInWavefrontObj[i];
-    // Tokenize our current line
-    currentLineTokens = currentLine.trim().split(/\s+/);
-    // vertex position, vertex texture, or vertex normal
-    vertexInfoType = vertexInfoNameMap[currentLineTokens[0]];
-
-    if (vertexInfoType) {
-      for (k = 1; k < currentLineTokens.length; k++) {
-        parsedJSON[vertexInfoType].push(parseFloat(currentLineTokens[k]));
-      }
-      continue
-    }
-
-    if (currentLineTokens[0] === 'f') {
-      // Get our 4 sets of vertex, uv, and normal indices for this face
-      for (k = 1; k < 5; k++) {
-        // If there is no fourth face entry then this is specifying a triangle
-        // in this case we push `-1`
-        // Consumers of this module should check for `-1` before expanding face data
-        if (k === 4 && !currentLineTokens[4]) {
-          parsedJSON.vertexPositionIndices.push(-1);
-          parsedJSON.vertexUVIndices.push(-1);
-          parsedJSON.vertexNormalIndices.push(-1);
-        } else {
-          var indices = currentLineTokens[k].split('/');
-          parsedJSON.vertexPositionIndices.push(parseInt(indices[0], 10) - 1); // We zero index
-          parsedJSON.vertexUVIndices.push(parseInt(indices[1], 10) - 1); // our face indices
-          parsedJSON.vertexNormalIndices.push(parseInt(indices[2], 10) - 1); // by subtracting 1
-        }
-      }
-    }
-  }
-
-  return parsedJSON
-}
-
 class ObjParser {
   static parse(objStr) {
-    const meshData = wavefrontObjParser(objStr);
+    const meshData = parseWFObj(objStr);
     const faces = new Uint32Array(meshData.vertexPositionIndices.filter((v) => v >= 0)); // the lib leaves room for 4-vertices faces by adding -1
     const vertices = new Float32Array(meshData.vertexPositions);
     const normals = new Float32Array(meshData.vertexNormals);
