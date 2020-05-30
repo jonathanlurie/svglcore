@@ -63,6 +63,10 @@ class Renderer {
     return this._background
   }
 
+  get svgText() {
+    return this._canvas.outerHTML
+  }
+
 
   resetCanvas() {
     this._canvas.innerHTML = ''
