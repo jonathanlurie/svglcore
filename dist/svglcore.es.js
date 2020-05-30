@@ -113,7 +113,6 @@ class MeshView {
     line.setAttributeNS(null, 'y1', yA);
     line.setAttributeNS(null, 'x2', xB);
     line.setAttributeNS(null, 'y2', yB);
-    // line.setAttributeNS(null, 'id', this._mesh.id)
     line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.color}`);
     this._view.appendChild(line);
   }
@@ -691,6 +690,7 @@ class Renderer {
   constructor(parentDiv, options) {
     this._width = 'width' in options ? options.width : window.innerWidth;
     this._height = 'height' in options ? options.height : window.innerHeight;
+    this._background = 'background' in options ? options.background : null;
     this._parentDiv = parentDiv;
 
     this._canvas = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'svg');
@@ -698,6 +698,7 @@ class Renderer {
     this._canvas.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
     this._canvas.setAttribute('height', `${this._height}`);
     this._canvas.setAttribute('width', `${this._width}`);
+    this._canvas.setAttribute('style', `background-color: ${this._background};`);
     this._canvas.setAttribute('viewBox', `0 0 ${this._width} ${this._height}`);
     this._parentDiv.appendChild(this._canvas);
 
@@ -730,6 +731,16 @@ class Renderer {
     } else {
       throw new Error('Invalid Camera Object.')
     }
+  }
+
+
+  set background(b) {
+    this._background = b;
+    this._canvas.setAttribute('style', `background-color: ${this._background};`);
+  }
+
+  get background() {
+    return this._background
   }
 
 

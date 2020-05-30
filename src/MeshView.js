@@ -88,7 +88,6 @@ class MeshView {
     line.setAttributeNS(null, 'y1', yA)
     line.setAttributeNS(null, 'x2', xB)
     line.setAttributeNS(null, 'y2', yB)
-    // line.setAttributeNS(null, 'id', this._mesh.id)
     line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.color}`)
     this._view.appendChild(line)
   }

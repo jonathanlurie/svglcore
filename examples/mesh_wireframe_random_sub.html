@@ -4,12 +4,41 @@
 
   <style>
     body {
-      background: #353535;
+      background: #82ffe9;
+      margin: 0;
     }
     #parent {
+      position: absolute;
       width: fit-content;
       height: fit-content;
-      border: grey solid 1px;
+      /* border: grey solid 1px; */
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      margin: auto;
+    }
+
+    #parent svg {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #fps-info {
+      position: absolute;
+      z-index: 2;
+      color: black;
+      opacity: 0.2;
+      font-size: 100px;
+      font-family: Helvetica, Arial, sans-serif;
+      line-height: 50px;
+      user-select: none;
+    }
+
+    #fps-info::before {
+      content: 'FPS \A ';
+      white-space: pre;
+      font-size: 24px;
     }
   </style>
 </head>
@@ -17,22 +46,20 @@
   <!-- importing the automatically build module -->
   <script src="../dist/svglcore.umd.js"></script>
 
+  <div id="fps-info"></div>
   <div id="parent"></div>
 
   <script>
 
   async function main(){
     const parentDiv = document.getElementById('parent')
+    const fpsInfo = document.getElementById('fps-info')
     let mouseDown = false
 
     const objRes = await fetch('meshes/bunny_med.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
-
-    console.log(meshData)
-    
-
 
     const canvasSize = {
       w: 1000,
@@ -43,8 +70,8 @@
     const mesh = new svglcore.Mesh()
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
-    mesh.lineThickness = 0.5
-    mesh.color = 'white'
+    mesh.lineThickness = 0.3
+    mesh.color = '#d021ff'
     mesh.opacity = 0.6
     mesh.scale = [35, 35, 35]   
     
@@ -53,7 +80,6 @@
 
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
-    
     mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
 
     const scene = new svglcore.Scene()
@@ -76,7 +102,8 @@
         width: canvasSize.w,
         height: canvasSize.h,
         camera: camera,
-        scene: scene
+        scene: scene,
+        background: '#82ffe9'
       })
 
     let needRender = true
@@ -121,16 +148,26 @@
       }, 50)
     })
 
-
+    let t0 = performance.now()
+    let frameCounter = 0
     function renderIfNeeded() {
       if (needRender) {
         renderer.render()
         needRender = false
       }
+
+      frameCounter += 1
       requestAnimationFrame(renderIfNeeded)
     }
 
+
+    setInterval(() => {
+      fpsInfo.innerHTML = frameCounter * 2
+      frameCounter = 0
+    }, 500)
+
     requestAnimationFrame(renderIfNeeded)
+
 
   }
 
