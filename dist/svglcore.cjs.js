@@ -860,6 +860,33 @@ class Renderer {
       meshView.addCircle(canvasPos[0], canvasPos[1], radius);
     }
 
+    if (mesh.showBoundingBox) {
+      this._addBoundingBox(mesh, mvpMat);
+    }
+
+    this._canvas.appendChild(meshView.view);
+  }
+
+  /*
+
+    The BOunding Box
+
+                H +----------+ G (max)
+                / |         /|
+               /  |        / |                     y
+            E +-----------+ F|                     Λ  . z
+              |   |       |  |                     | /
+              | D + - - - | -+ C                   |/
+              |  /        | /                      +-------> x
+              | /         |/
+      (min) A +-----------+ B
+
+  */
+
+  _addBoundingBox(mesh, mvpMat, bbLineThickness = 0.33) {
+    const tmpVector = glmatrix.vec3.create();
+    const meshView = mesh.meshView;
+
     const bb = mesh.boundingBox;
     const a3D = [
       bb.min[0],
@@ -924,7 +951,6 @@ class Renderer {
     ];
     glmatrix.vec3.transformMat4(tmpVector, h3D, mvpMat);
     const h2D = this._unit2DPositionToCanvasPosition(tmpVector);
-    const bbLineThickness = 1;
 
     // AB line
     meshView.addLine(a2D[0], a2D[1], b2D[0], b2D[1], bbLineThickness);
@@ -961,25 +987,7 @@ class Renderer {
 
     // HE line
     meshView.addLine(h2D[0], h2D[1], e2D[0], e2D[1], bbLineThickness);
-
-    this._canvas.appendChild(meshView.view);
   }
-
-  /*
-
-    The BOunding Box
-
-                H +----------+ G (max)
-                / |         /|
-               /  |        / |                     y
-            E +-----------+ F|                     Λ  . z
-              |   |       |  |                     | /
-              | D + - - - | -+ C                   |/
-              |  /        | /                      +-------> x
-              | /         |/
-      (min) A +-----------+ B
-
-  */
 
 
   _renderEdges(mesh, mvpMat) {
@@ -1029,16 +1037,12 @@ class Renderer {
       meshView.addLine(canvasPosA[0], canvasPosA[1], canvasPosB[0], canvasPosB[1], thickness);
     }
 
+    if (mesh.showBoundingBox) {
+      this._addBoundingBox(mesh, mvpMat);
+    }
+
     this._canvas.appendChild(meshView.view);
   }
-
-
-
-
-
-
-
-
 
 
 
@@ -1048,8 +1052,8 @@ class Renderer {
     const uniqueEdges = mesh.uniqueEdges;
     const camPosition = this._camera.position;
 
-    const edgesToRender = Math.min(750, mesh.uniqueEdges.length / 2);
-
+    // Displaying at most 750 edges, but most likely 20% of the edges
+    const edgesToRender = Math.min(750, mesh.uniqueEdges.length * 0.1);
 
     meshView.reset();
     const tmpVectorA = glmatrix.vec3.create();
@@ -1102,6 +1106,10 @@ class Renderer {
       const canvasPosB = this._unit2DPositionToCanvasPosition(tmpVectorB);
 
       meshView.addLine(canvasPosA[0], canvasPosA[1], canvasPosB[0], canvasPosB[1], thickness);
+    }
+
+    if (mesh.showBoundingBox) {
+      this._addBoundingBox(mesh, mvpMat);
     }
 
     this._canvas.appendChild(meshView.view);

@@ -121,7 +121,7 @@
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
     mesh.showBoundingBox = false
-    mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+    mesh.renderMode = svglcore.RENDER_MODES.POINT_CLOUD
 
     const scene = new svglcore.Scene()
     scene.add(mesh)
@@ -152,14 +152,14 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
-      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
       mesh.showBoundingBox = true
       needRender = true
     })
 
     parentDiv.addEventListener('mouseup', (evt) => {
       mouseDown = false
-      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
       mesh.showBoundingBox = false
       needRender = true
     })
@@ -176,7 +176,7 @@
     let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
       mesh.showBoundingBox = true
       camera.dolly(evt.deltaY / 10.)
       needRender = true
@@ -187,7 +187,7 @@
       }
 
       timer = setTimeout(function() {
-        mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+        // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
         mesh.showBoundingBox = false
         needRender = true
       }, 50)

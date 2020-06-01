@@ -22,7 +22,7 @@
     const parentDiv = document.getElementById('parent')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_4.obj')
+    const objRes = await fetch('meshes/bunny_lo.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -48,8 +48,6 @@
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
     
-    
-
     const scene = new svglcore.Scene()
     scene.add(mesh)
 
