@@ -1,0 +1,233 @@
+<html>
+<head>
+  <title>svGL Bunny</title>
+
+  <style>
+    body {
+      background: #82ffe9;
+      margin: 0;
+      font-family: Helvetica, Arial, sans-serif;
+    }
+    #parent {
+      position: absolute;
+      width: fit-content;
+      height: fit-content;
+      /* border: grey solid 1px; */
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      margin: auto;
+    }
+
+    #parent svg {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #fps-info {
+      position: absolute;
+      z-index: 2;
+      color: black;
+      opacity: 0.2;
+      font-size: 100px;
+      line-height: 50px;
+      user-select: none;
+      margin: 15px;
+    }
+
+    #fps-info::before {
+      content: 'FPS \A ';
+      white-space: pre;
+      font-size: 24px;
+    }
+
+    #info {
+      position: absolute;
+      z-index: 2;
+      top: 0;
+      right: 0;
+      text-align: right;
+      max-width: 30%;
+      margin: 15px;
+      opacity: 0.5;
+    }
+
+    #dl-bt {
+      position: absolute;
+      z-index: 2;
+      bottom: 0;
+      margin: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #82ffe9;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #dl-bt:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+
+  </style>
+</head>
+<body>
+  <!-- importing the automatically build module -->
+  <script src="../dist/svglcore.umd.js"></script>
+
+  <div id="info">
+    <p>
+      Try grabbing the bunny and move the camera around. You can also scroll to zoom in and out.
+    </p>
+    <p>
+      While moving, only few edges are randomly showing, because showing them all would be too costly. When the mouse is released, the mesh is fully shown again.
+    </p>
+  </div>
+  <div id="fps-info"></div>
+  <div id="parent"></div>
+  <div id="dl-bt">Download SVG file</div>
+
+
+  <script>
+
+  async function main(){
+    const parentDiv = document.getElementById('parent')
+    const fpsInfo = document.getElementById('fps-info')
+    let mouseDown = false
+
+    const objRes = await fetch('meshes/bunny_lo.obj')
+    const objStr = await objRes.text()
+
+    const meshData = svglcore.ObjParser.parse(objStr)
+
+    const canvasSize = {
+      w: 1000,
+      h: 600
+    }
+    
+
+    const mesh = new svglcore.Mesh()
+    mesh.vertices = meshData.vertices
+    mesh.faces = meshData.faces
+    mesh.lineThickness = 0.3
+    mesh.color = '#d021ff'
+    mesh.opacity = 0.6
+    mesh.scale = [35, 35, 35]   
+    
+    console.log(mesh.boundingBox)
+    
+
+    // center the mesh on its center (world center)
+    mesh.position = mesh.boundingBox.center.map((coord) => -coord)
+    mesh.showBoundingBox = true
+    mesh.renderMode = svglcore.RENDER_MODES.POINT_CLOUD
+
+    const scene = new svglcore.Scene()
+    scene.add(mesh)
+
+    const camera = new svglcore.PerspectiveCamera(
+      {
+        eye: [0, 0, 500],
+        center: [0, 0, 0],
+        up: [0, 1, 0]
+      }
+    )
+    
+    camera.aspectRatio = canvasSize.w / canvasSize.h
+    camera.fieldOfView = Math.PI / 4
+
+    const renderer = new svglcore.Renderer(
+      parentDiv,
+      {
+        width: canvasSize.w,
+        height: canvasSize.h,
+        camera: camera,
+        scene: scene,
+        background: '#82ffe9'
+      })
+
+    let needRender = true
+
+
+    parentDiv.addEventListener('mousedown', (evt) => {
+      mouseDown = true
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      needRender = true
+    })
+
+    parentDiv.addEventListener('mouseup', (evt) => {
+      mouseDown = false
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+      needRender = true
+    })
+
+    parentDiv.addEventListener('mousemove', (evt) => {
+      if (mouseDown) {
+        camera.rotate(
+          [-evt.movementX * 0.005, -evt.movementY * 0.005]
+        )
+        needRender = true
+      }
+    })
+
+    let timer = null
+    parentDiv.addEventListener('wheel', (evt) => {
+      event.preventDefault()
+      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      camera.dolly(evt.deltaY / 10.)
+      needRender = true
+
+      if(timer !== null) {
+        clearTimeout(timer)
+        
+      }
+
+      timer = setTimeout(function() {
+        // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+        needRender = true
+      }, 50)
+    })
+
+    let t0 = performance.now()
+    let frameCounter = 0
+    function renderIfNeeded() {
+      if (needRender) {
+        renderer.render()
+        needRender = false
+      }
+
+      frameCounter += 1
+      requestAnimationFrame(renderIfNeeded)
+    }
+
+
+    setInterval(() => {
+      fpsInfo.innerHTML = frameCounter * 2
+      frameCounter = 0
+    }, 500)
+
+    requestAnimationFrame(renderIfNeeded)
+
+
+    // download the svg  file
+    document.getElementById('dl-bt').addEventListener('mousedown', (evt) => {
+      const textContent = mesh
+      const element = document.createElement('a')
+      element.setAttribute('href', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(renderer.svgText))
+      element.setAttribute('download', 'bunny.svg')
+      element.style.display = 'none'
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+    })
+
+  }
+
+  main()
+
+    
+  </script>
+
+</body>
+</html>

@@ -24,6 +24,7 @@ class Mesh {
       center: glmatrix.vec3.fromValues(0, 0, 0),
     }
     this._boundingBoxNeedsUpdate = true
+    this._showBoundingBox = false
 
     this._scale = glmatrix.vec3.fromValues(1, 1, 1)
     this._quaternion = glmatrix.quat.create()
@@ -173,6 +174,7 @@ class Mesh {
     return this._verticesPerFace
   }
 
+
   get visible() {
     return this._visible
   }
@@ -180,6 +182,16 @@ class Mesh {
 
   set visible(v) {
     this._visible = v
+  }
+
+
+  set showBoundingBox(s) {
+    this._showBoundingBox = s
+  }
+
+
+  get showBoundingBox() {
+    return this._showBoundingBox
   }
 
 

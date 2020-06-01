@@ -164,8 +164,126 @@ class Renderer {
       meshView.addCircle(canvasPos[0], canvasPos[1], radius)
     }
 
+    const bb = mesh.boundingBox
+    const a3D = [
+      bb.min[0],
+      bb.min[1],
+      bb.min[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, a3D, mvpMat)
+    const a2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const b3D = [
+      bb.max[0],
+      bb.min[1],
+      bb.min[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, b3D, mvpMat)
+    const b2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const c3D = [
+      bb.max[0],
+      bb.min[1],
+      bb.max[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, c3D, mvpMat)
+    const c2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const d3D = [
+      bb.min[0],
+      bb.min[1],
+      bb.max[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, d3D, mvpMat)
+    const d2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const e3D = [
+      bb.min[0],
+      bb.max[1],
+      bb.min[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, e3D, mvpMat)
+    const e2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const f3D = [
+      bb.max[0],
+      bb.max[1],
+      bb.min[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, f3D, mvpMat)
+    const f2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const g3D = [
+      bb.max[0],
+      bb.max[1],
+      bb.max[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, g3D, mvpMat)
+    const g2D = this._unit2DPositionToCanvasPosition(tmpVector)
+
+    const h3D = [
+      bb.min[0],
+      bb.max[1],
+      bb.max[2],
+    ]
+    glmatrix.vec3.transformMat4(tmpVector, h3D, mvpMat)
+    const h2D = this._unit2DPositionToCanvasPosition(tmpVector)
+    const bbLineThickness = 1
+
+    // AB line
+    meshView.addLine(a2D[0], a2D[1], b2D[0], b2D[1], bbLineThickness)
+
+    // BC line
+    meshView.addLine(b2D[0], b2D[1], c2D[0], c2D[1], bbLineThickness)
+
+    // CD line
+    meshView.addLine(c2D[0], c2D[1], d2D[0], d2D[1], bbLineThickness)
+
+    // DA line
+    meshView.addLine(d2D[0], d2D[1], a2D[0], a2D[1], bbLineThickness)
+
+    // AE line
+    meshView.addLine(a2D[0], a2D[1], e2D[0], e2D[1], bbLineThickness)
+
+    // BF line
+    meshView.addLine(b2D[0], b2D[1], f2D[0], f2D[1], bbLineThickness)
+
+    // CG line
+    meshView.addLine(c2D[0], c2D[1], g2D[0], g2D[1], bbLineThickness)
+
+    // DH line
+    meshView.addLine(d2D[0], d2D[1], h2D[0], h2D[1], bbLineThickness)
+
+    // EF line
+    meshView.addLine(e2D[0], e2D[1], f2D[0], f2D[1], bbLineThickness)
+
+    // FG line
+    meshView.addLine(f2D[0], f2D[1], g2D[0], g2D[1], bbLineThickness)
+
+    // GH line
+    meshView.addLine(g2D[0], g2D[1], h2D[0], h2D[1], bbLineThickness)
+
+    // HE line
+    meshView.addLine(h2D[0], h2D[1], e2D[0], e2D[1], bbLineThickness)
+
     this._canvas.appendChild(meshView.view)
   }
+
+  /*
+
+    The BOunding Box
+
+                H +----------+ G (max)
+                / |         /|
+               /  |        / |                     y
+            E +-----------+ F|                     Λ  . z
+              |   |       |  |                     | /
+              | D + - - - | -+ C                   |/
+              |  /        | /                      +-------> x
+              | /         |/
+      (min) A +-----------+ B
+
+  */
 
 
   _renderEdges(mesh, mvpMat) {
