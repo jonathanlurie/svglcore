@@ -38,7 +38,13 @@ class Mesh {
     this._radius = 1
 
     this._matrix = glmatrix.mat4.create()
-    this._worldVerticesNeedsUpdate = true
+    this._worldVerticesNeedUpdate = true
+
+    this._faceNormalsWorld = null
+    this._faceNormalsWorldNeedUpdate = true
+
+    this._faceCentersWorld = null
+    this._faceCentersWorldNeedUpdate = true
   }
 
 
@@ -89,6 +95,9 @@ class Mesh {
     this._vertices = v
     this._worldVertices = new v.constructor(v.length)
     this._boundingBoxNeedsUpdate = true
+    this._faceNormalsWorldNeedUpdate = true
+    this._faceCentersWorldNeedUpdate = true
+    this._worldVerticesNeedUpdate = true
     return this
   }
 
@@ -108,7 +117,7 @@ class Mesh {
 
 
   get worldVertices() {
-    if (this._worldVerticesNeedsUpdate) {
+    if (this._worldVerticesNeedUpdate) {
       this._computeWorldVertices()
     }
     return this._worldVertices
@@ -131,12 +140,14 @@ class Mesh {
       this._worldVertices[i + 2] = tmpVec3[2]
     }
 
-    this._worldVerticesNeedsUpdate = false
+    this._worldVerticesNeedUpdate = false
   }
 
 
   set faces(f) {
     this._faces = f
+    this._faceNormalsWorldNeedUpdate = true
+    this._faceCenterWorldNeedUpdate = true
   }
 
 
@@ -203,7 +214,7 @@ class Mesh {
       throw new Error('This mesh does not have any vertex.')
     }
 
-    if (this._worldVerticesNeedsUpdate) {
+    if (this._worldVerticesNeedUpdate) {
       this._computeWorldVertices()
     }
 
@@ -304,8 +315,10 @@ class Mesh {
 
   updateMatrix() {
     glmatrix.mat4.fromRotationTranslationScale(this._matrix, this._quaternion, this._position, this._scale)
-    this._worldVerticesNeedsUpdate = true
+    this._worldVerticesNeedUpdate = true
     this._boundingBoxNeedsUpdate = true
+    this._faceNormalsWorldNeedUpdate = true
+    this._faceCentersWorldNeedUpdate = true
   }
 
 
@@ -387,7 +400,97 @@ class Mesh {
   }
 
 
+  _computeFaceCentersWorld() {
+    // just to make sure they are built
+    const wv = this.worldVertices()
 
+    const faces = this._faces
+    const vpf = this._verticesPerFace
+    const nbFaces = this._faces.length / this._verticesPerFace
+    const faceCentersWorld = []
+
+    for (let f = 0; f < nbFaces; f += 1) {
+      const v0Index = f * vpf
+      let x = 0
+      let y = 0
+      let z = 0
+
+      for (let v = 0; v < vpf; v += 1) {
+        x += wv[faces[v0Index + v] * 3]
+        y += wv[faces[v0Index + v] * 3 + 1]
+        z += wv[faces[v0Index + v] * 3 + 2]
+      }
+
+      faceCentersWorld.push(
+        x / vpf,
+        y / vpf,
+        z / vpf,
+      )
+    }
+
+    this._faceCentersWorld = new Float32Array(faceCentersWorld)
+    this._faceCentersWorldNeedUpdate = false
+  }
+
+
+  get faceCentersWorld() {
+    if (this._faces === null) {
+      return null
+    }
+
+    if (this._faceCentersWorldNeedUpdate) {
+      this._computeFaceCentersWorld()
+    }
+
+    return this._faceCentersWorld
+  }
+
+
+  _computeFaceNormalWorld() {
+    // just to make sure they are built
+    const wv = this.worldVertices()
+
+    const faces = this._faces
+    const vpf = this._verticesPerFace
+    const faceNormalsWorld = []
+
+    const ab = glmatrix.vec3.create()
+    const bc = glmatrix.vec3.create()
+    const n = glmatrix.vec3.create()
+
+    for (let f = 0; f < faces.length; f += vpf) {
+      const indexA = faces[f] * 3
+      const indexB = faces[f + 1] * 3
+      const indexC = faces[f + 2] * 3
+
+      ab[0] = wv[indexB] - wv[indexA]
+      ab[1] = wv[indexB + 1] - wv[indexA + 1]
+      ab[2] = wv[indexB + 2] - wv[indexA + 2]
+
+      bc[0] = wv[indexC] - wv[indexB]
+      bc[1] = wv[indexC + 1] - wv[indexB + 1]
+      bc[2] = wv[indexC + 2] - wv[indexB + 2]
+
+      glmatrix.vec3.cross(n, ab, bc)
+      faceNormalsWorld.push(n[0], n[1], n[2])
+    }
+
+    this._faceNormalsWorld = new Float32Array(faceNormalsWorld)
+
+    this._faceNormalsWorldNeedUpdate = false
+  }
+
+
+  get faceNormalsWorld() {
+    if (this._faces === null) {
+      return null
+    }
+
+    if (this._faceNormalsWorldNeedUpdate) {
+      this._computeFaceNormalWorld()
+    }
+    return this._faceNormalsWorld
+  }
 }
 
 export default Mesh
