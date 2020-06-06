@@ -1420,7 +1420,6 @@
 
       polygon.setAttributeNS(null, 'points', pointsStr);
       polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColor}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColor}; stroke-width: ${thickness}`);
-      // polygon.setAttributeNS(null, 'style', `fill: none; stroke: ${mesh.edgeColor}; stroke-width: 0.3;`)
       this._view.appendChild(polygon);
     }
   }
@@ -2554,6 +2553,8 @@
       const faceNormal = create$2();
       const faceCenter = create$2();
       const camToCenter = create$2();
+      const normalTip = create$2();
+      const tmp = create$2();
 
       // will be filled with
       const polygonsToRender = [];
@@ -2564,19 +2565,30 @@
 
         // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
         // IOW, if dot product >= 1
-        faceNormal[0] = faceNormals[v0Index * 3];
-        faceNormal[1] = faceNormals[v0Index * 3 + 1];
-        faceNormal[2] = faceNormals[v0Index * 3 + 2];
+        faceNormal[0] = faceNormals[f * 3];
+        faceNormal[1] = faceNormals[f * 3 + 1];
+        faceNormal[2] = faceNormals[f * 3 + 2];
 
-        faceCenter[0] = faceCenters[v0Index * 3];
-        faceCenter[1] = faceCenters[v0Index * 3 + 1];
-        faceCenter[2] = faceCenters[v0Index * 3 + 2];
+        faceCenter[0] = faceCenters[f * 3];
+        faceCenter[1] = faceCenters[f * 3 + 1];
+        faceCenter[2] = faceCenters[f * 3 + 2];
 
         camToCenter[0] = faceCenter[0] - camPosition[0];
         camToCenter[1] = faceCenter[1] - camPosition[1];
         camToCenter[2] = faceCenter[2] - camPosition[2];
         const camToCenterDist = length(camToCenter);
         normalize(camToCenter, camToCenter);
+
+        // compute face center in 2D
+        transformMat4(tmp, faceCenter, mvpMat);
+        const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp);
+
+        // compute the normal vector in 2D
+        normalTip[0] = faceCenter[0] + faceNormal[0] * 0.2;
+        normalTip[1] = faceCenter[1] + faceNormal[1] * 0.2;
+        normalTip[2] = faceCenter[2] + faceNormal[2] * 0.2;
+        transformMat4(tmp, normalTip, mvpMat);
+        const normalTip2D = this._unit2DPositionToCanvasPosition(tmp);
 
         const dotProd = dot(faceNormal, camToCenter);
 
@@ -2603,7 +2615,6 @@
                                   || tmpCoord[2] >= 1
                                   || tmpCoord[2] <= -1);
           allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum;
-
           const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord);
           allVerticesOfFace2D.push(canvasPos[0], canvasPos[1]);
         }
@@ -2613,18 +2624,17 @@
           continue
         }
 
-        // Compute thickness of stroke
-        const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * camToCenterDist)) * (this._height / 2);
-
-
         polygonsToRender.push({
           points2D: allVerticesOfFace2D,
-          thickness,
+          faceCenter2D,
+          normalTip2D,
+          thickness: (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * camToCenterDist)) * (this._height / 2),
           distanceToCam: camToCenterDist,
         });
       }
 
-      polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+      polygonsToRender.sort((a, b) => (a.distanceToCam > b.distanceToCam ? -1 : 1)).forEach((polygon) => {
+        // adding the face
         meshView.addFaceOpaquePlain(polygon.points2D, polygon.thickness);
       });
 
@@ -2685,10 +2695,6 @@
         transformMat4(tmp, faceCenter, mvpMat);
         const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp);
 
-        if (isNaN(faceCenter2D[0])) {
-          console.log('number is nan');
-        }
-
         // compute the normal vector in 2D
         normalTip[0] = faceCenter[0] + faceNormal[0] * 0.2;
         normalTip[1] = faceCenter[1] + faceNormal[1] * 0.2;
@@ -2696,12 +2702,15 @@
         transformMat4(tmp, normalTip, mvpMat);
         const normalTip2D = this._unit2DPositionToCanvasPosition(tmp);
 
+        // const dotProd = glmatrix.vec3.dot(faceNormal, camToCenter)
+
         // if (dotProd >= 0) {
         //   continue
         // }
 
         // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
         const allVerticesOfFace2D = []; // in the form [x, y, x, y, ...]
+        let allProjectionsAreOutsideFrustrum = true;
         for (let v = 0; v < vpf; v += 1) {
           const offset = faces[v0Index + v] * 3;
           tmpCoord[0] = vertices[offset];
@@ -2711,16 +2720,22 @@
 
           transformMat4(tmpCoord, tmpCoord, mvpMat);
 
+          const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                  || tmpCoord[0] <= -1
+                                  || tmpCoord[1] >= 1
+                                  || tmpCoord[1] <= -1
+                                  || tmpCoord[2] >= 1
+                                  || tmpCoord[2] <= -1);
+          allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum;
+
           const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord);
           allVerticesOfFace2D.push(canvasPos[0], canvasPos[1]);
         }
 
-        // // all the vertices must be oustise to not render
-        // if (allProjectionsAreOutsideFrustrum) {
-        //   continue
-        // }
-
-        
+        // all the vertices must be oustise to not render
+        if (allProjectionsAreOutsideFrustrum) {
+          continue
+        }
 
         polygonsToRender.push({
           points2D: allVerticesOfFace2D,
@@ -2730,12 +2745,12 @@
         });
       }
 
-      polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+      polygonsToRender.sort((a, b) => (a.distanceToCam > b.distanceToCam ? -1 : 1)).forEach((polygon) => {
         // adding the face
         meshView.addFaceOpaquePlain(polygon.points2D, 0.3);
 
         // adding the polygon center circle
-        meshView.addCircle(polygon.faceCenter2D[0], polygon.faceCenter2D[1], 3);
+        meshView.addCircle(polygon.faceCenter2D[0], polygon.faceCenter2D[1], 1);
 
         // adding the normal line
         meshView.addLine(polygon.faceCenter2D[0], polygon.faceCenter2D[1], polygon.normalTip2D[0], polygon.normalTip2D[1], 0.3);

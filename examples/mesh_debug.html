@@ -96,7 +96,7 @@
     const fpsInfo = document.getElementById('fps-info')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_lo.obj')
+    const objRes = await fetch('meshes/bunny_med.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -112,7 +112,8 @@
     mesh.faces = meshData.faces
     mesh.lineThickness = 0.3
     mesh.edgeColor = '#d021ff'
-    mesh.opacity = 0.6
+    mesh.opacity = 0.5
+    mesh.showBoundingBox = true
     mesh.scale = [35, 35, 35]   
     
     console.log(mesh.boundingBox)
@@ -151,7 +152,7 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       needRender = true
     })
 
@@ -173,7 +174,7 @@
     let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       camera.dolly(evt.deltaY / 10.)
       needRender = true
 

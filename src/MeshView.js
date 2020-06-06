@@ -119,7 +119,6 @@ class MeshView {
 
     polygon.setAttributeNS(null, 'points', pointsStr)
     polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColor}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColor}; stroke-width: ${thickness}`)
-    // polygon.setAttributeNS(null, 'style', `fill: none; stroke: ${mesh.edgeColor}; stroke-width: 0.3;`)
     this._view.appendChild(polygon)
   }
 }

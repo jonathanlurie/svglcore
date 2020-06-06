@@ -96,7 +96,7 @@
     const fpsInfo = document.getElementById('fps-info')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_lo.obj')
+    const objRes = await fetch('meshes/bunny_med.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -106,14 +106,17 @@
       h: 600
     }
     
+    const edgeColor = '#81fee9'
+    const faceColor = '#13bb9d'
 
     const mesh = new svglcore.Mesh()
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
-    mesh.lineThickness = 0.3
-    mesh.edgeColor = '#d021ff'
-    mesh.opacity = 0.6
+    mesh.lineThickness = 0.2
+    mesh.edgeColor = edgeColor
+    mesh.faceColor = faceColor
     mesh.scale = [35, 35, 35]   
+    mesh.showBoundingBox = true
     
     console.log(mesh.boundingBox)
     
@@ -151,13 +154,15 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
+      mesh.edgeColor = faceColor
       needRender = true
     })
 
     parentDiv.addEventListener('mouseup', (evt) => {
       mouseDown = false
       mesh.renderMode = svglcore.RENDER_MODES.FACE_OPAQUE_PLAIN
+      mesh.edgeColor = edgeColor
       needRender = true
     })
 
@@ -173,7 +178,8 @@
     let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
+      mesh.edgeColor = faceColor
       camera.dolly(evt.deltaY / 10.)
       needRender = true
 
@@ -184,6 +190,7 @@
 
       timer = setTimeout(function() {
         mesh.renderMode = svglcore.RENDER_MODES.FACE_OPAQUE_PLAIN
+        mesh.edgeColor = edgeColor
         needRender = true
       }, 50)
     })
