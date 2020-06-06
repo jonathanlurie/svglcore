@@ -17,6 +17,9 @@ class MeshView {
 
     this._linePool = []
     this._linePoolCounter = 0
+
+    this._polygonPool = []
+    this._polygonPoolCounter = 0
   }
 
 
@@ -38,6 +41,7 @@ class MeshView {
     // }
     this._circlePoolCounter = 0
     this._linePoolCounter = 0
+    this._polygonPoolCounter = 0
   }
 
 
@@ -65,7 +69,7 @@ class MeshView {
     circle.setAttributeNS(null, 'cy', y)
     circle.setAttributeNS(null, 'r', radius)
     // circle.setAttributeNS(null, 'id', this._mesh.id)
-    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.color}; opacity: ${this._mesh.opacity}; stroke-width: 0;`)
+    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.edgeColor}; opacity: ${this._mesh.opacity}; stroke-width: 0;`)
 
     this._view.appendChild(circle)
   }
@@ -79,7 +83,7 @@ class MeshView {
       line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line')
       this._linePool.push(line)
     } else {
-    // The pool is large enough, we borrow a circle from the pool
+    // The pool is large enough, we borrow a line from the pool
       line = this._linePool[this._linePoolCounter]
     }
 
@@ -88,8 +92,35 @@ class MeshView {
     line.setAttributeNS(null, 'y1', yA)
     line.setAttributeNS(null, 'x2', xB)
     line.setAttributeNS(null, 'y2', yB)
-    line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.color}`)
+    line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.edgeColor}`)
     this._view.appendChild(line)
+  }
+
+
+  addFaceOpaquePlain(xyArr, thickness) {
+    let polygon = null
+    const mesh = this._mesh
+
+    // the pool is not large enough, we create a new polygon
+    if (this._polygonPool.length < this._polygonPoolCounter + 1) {
+      polygon = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'polygon')
+      this._polygonPool.push(polygon)
+    } else {
+    // The pool is large enough, we borrow a polygon from the pool
+      polygon = this._polygonPool[this._polygonPoolCounter]
+    }
+
+    this._polygonPoolCounter += 1
+
+    let pointsStr = ''
+    for (let i = 0; i < xyArr.length - 1; i += 2) {
+      pointsStr += `${xyArr[i]},${xyArr[i + 1]} `
+    }
+
+    polygon.setAttributeNS(null, 'points', pointsStr)
+    polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColor}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColor}; stroke-width: ${thickness}`)
+    // polygon.setAttributeNS(null, 'style', `fill: none; stroke: ${mesh.edgeColor}; stroke-width: 0.3;`)
+    this._view.appendChild(polygon)
   }
 }
 

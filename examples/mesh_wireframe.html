@@ -29,7 +29,7 @@
 
     console.log(meshData)
     
-    
+
     const canvasSize = {
       w: 1000,
       h: 600
@@ -40,19 +40,19 @@
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
     mesh.lineThickness = 0.5
-    mesh.color = '#b00098'
+    mesh.edgeColor = '#b00098'
     mesh.opacity = 0.4
     mesh.scale = [35, 35, 35]    
 
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
     
-    mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+    mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
     
     
 
     const scene = new svglcore.Scene()
-    scene.add(mesh
+    scene.add(mesh)
 
     const camera = new svglcore.PerspectiveCamera(
       {

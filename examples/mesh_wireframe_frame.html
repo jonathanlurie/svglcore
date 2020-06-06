@@ -44,7 +44,7 @@
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
     mesh.lineThickness = 0.8
-    mesh.color = 'white'
+    mesh.edgeColor = 'white'
     mesh.opacity = 0.6
     mesh.scale = [35, 35, 35]   
     
@@ -54,7 +54,7 @@
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
     
-    mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+    mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
 
     const scene = new svglcore.Scene()
     scene.add(mesh)

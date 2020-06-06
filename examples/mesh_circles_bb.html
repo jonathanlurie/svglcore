@@ -111,7 +111,7 @@
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
     mesh.lineThickness = 0.3
-    mesh.color = '#d021ff'
+    mesh.edgeColor = '#d021ff'
     mesh.opacity = 0.6
     mesh.scale = [35, 35, 35]   
     
@@ -152,14 +152,14 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
-      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      // mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       mesh.showBoundingBox = true
       needRender = true
     })
 
     parentDiv.addEventListener('mouseup', (evt) => {
       mouseDown = false
-      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+      // mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
       mesh.showBoundingBox = false
       needRender = true
     })
@@ -176,7 +176,7 @@
     let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB
+      // mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       mesh.showBoundingBox = true
       camera.dolly(evt.deltaY / 10.)
       needRender = true
@@ -187,7 +187,7 @@
       }
 
       timer = setTimeout(function() {
-        // mesh.renderMode = svglcore.RENDER_MODES.TRIANGLE_WIREFRAME
+        // mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
         mesh.showBoundingBox = false
         needRender = true
       }, 50)

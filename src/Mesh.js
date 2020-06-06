@@ -32,7 +32,8 @@ class Mesh {
 
     // material data
     this._renderMode = RENDER_MODES.POINT_CLOUD
-    this._color = '#000'
+    this._edgeColor = '#000000'
+    this._faceColor = '#EEEEEE'
     this._opacity = 1
     this._lineThickness = 1
     this._radius = 1
@@ -156,13 +157,21 @@ class Mesh {
   }
 
 
-  set color(c) {
-    this._color = c
+  set edgeColor(c) {
+    this._edgeColor = c
   }
 
 
-  get color() {
-    return this._color
+  get edgeColor() {
+    return this._edgeColor
+  }
+
+  set faceColor(c) {
+    this._faceColor = c
+  }
+
+  get faceColor() {
+    return this._faceColor
   }
 
 
@@ -388,7 +397,8 @@ class Mesh {
     cpMesh.quaternion = this.quaternion
     cpMesh.scale = this.scale
     cpMesh.verticesPerFace = this.verticesPerFace
-    cpMesh.color = this.color
+    cpMesh.edgeColor = this.edgeColor
+    cpMesh.faceColor = this.faceColor
     cpMesh.opacity = this.opacity
     cpMesh.radius = this.radius
     cpMesh.lineThickness = this.lineThickness
@@ -402,7 +412,7 @@ class Mesh {
 
   _computeFaceCentersWorld() {
     // just to make sure they are built
-    const wv = this.worldVertices()
+    const wv = this.worldVertices
 
     const faces = this._faces
     const vpf = this._verticesPerFace
@@ -448,7 +458,7 @@ class Mesh {
 
   _computeFaceNormalWorld() {
     // just to make sure they are built
-    const wv = this.worldVertices()
+    const wv = this.worldVertices
 
     const faces = this._faces
     const vpf = this._verticesPerFace
@@ -466,17 +476,19 @@ class Mesh {
       ab[0] = wv[indexB] - wv[indexA]
       ab[1] = wv[indexB + 1] - wv[indexA + 1]
       ab[2] = wv[indexB + 2] - wv[indexA + 2]
+      glmatrix.vec3.normalize(ab, ab)
 
       bc[0] = wv[indexC] - wv[indexB]
       bc[1] = wv[indexC + 1] - wv[indexB + 1]
       bc[2] = wv[indexC + 2] - wv[indexB + 2]
+      glmatrix.vec3.normalize(bc, bc)
 
       glmatrix.vec3.cross(n, ab, bc)
+      glmatrix.vec3.normalize(n, n)
       faceNormalsWorld.push(n[0], n[1], n[2])
     }
 
     this._faceNormalsWorld = new Float32Array(faceNormalsWorld)
-
     this._faceNormalsWorldNeedUpdate = false
   }
 

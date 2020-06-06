@@ -110,11 +110,17 @@ class Renderer {
         case RENDER_MODES.POINT_CLOUD:
           this._renderPointCloud(mesh, modelViewProjMat)
           break
-        case RENDER_MODES.TRIANGLE_WIREFRAME:
-          this._renderEdges(mesh, modelViewProjMat)
+        case RENDER_MODES.WIREFRAME:
+          this._renderWireframe(mesh, modelViewProjMat)
           break
-        case RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB:
-          this._renderEdgesRandomSub(mesh, modelViewProjMat)
+        case RENDER_MODES.WIREFRAME_RANDOM_SUB:
+          this._renderWireframeRandomSub(mesh, modelViewProjMat)
+          break
+        case RENDER_MODES.FACE_OPAQUE_PLAIN:
+          this._renderFaceOpaquePlain(mesh, modelViewProjMat)
+          break
+        case RENDER_MODES.DEBUG_GEOMETRY:
+          this._renderDebug(mesh, modelViewProjMat)
           break
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
@@ -294,7 +300,7 @@ class Renderer {
   }
 
 
-  _renderEdges(mesh, mvpMat) {
+  _renderWireframe(mesh, mvpMat) {
     const meshView = mesh.meshView
     const vertices = mesh.worldVertices
     const uniqueEdges = mesh.uniqueEdges
@@ -350,7 +356,7 @@ class Renderer {
 
 
 
-  _renderEdgesRandomSub(mesh, mvpMat) {
+  _renderWireframeRandomSub(mesh, mvpMat) {
     const meshView = mesh.meshView
     const vertices = mesh.worldVertices
     const uniqueEdges = mesh.uniqueEdges
@@ -415,6 +421,220 @@ class Renderer {
     if (mesh.showBoundingBox) {
       this._addBoundingBox(mesh, mvpMat)
     }
+
+    this._canvas.appendChild(meshView.view)
+  }
+
+
+  _renderFaceOpaquePlain(mesh, mvpMat) {
+    const meshView = mesh.meshView
+    meshView.reset()
+    const vertices = mesh.worldVertices
+    const faces = mesh.faces
+    const faceNormals = mesh.faceNormalsWorld
+    const faceCenters = mesh.faceCentersWorld
+    const camPosition = this._camera.position
+    const vpf = mesh.verticesPerFace
+    const nbFaces = faces.length / vpf
+
+    const faceNormal = glmatrix.vec3.create()
+    const faceCenter = glmatrix.vec3.create()
+    const camToCenter = glmatrix.vec3.create()
+
+    // will be filled with
+    const polygonsToRender = []
+    const tmpCoord = glmatrix.vec3.create()
+
+    for (let f = 0; f < nbFaces; f += 1) {
+      const v0Index = f * vpf
+
+      // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+      // IOW, if dot product >= 1
+      faceNormal[0] = faceNormals[v0Index * 3]
+      faceNormal[1] = faceNormals[v0Index * 3 + 1]
+      faceNormal[2] = faceNormals[v0Index * 3 + 2]
+
+      faceCenter[0] = faceCenters[v0Index * 3]
+      faceCenter[1] = faceCenters[v0Index * 3 + 1]
+      faceCenter[2] = faceCenters[v0Index * 3 + 2]
+
+      camToCenter[0] = faceCenter[0] - camPosition[0]
+      camToCenter[1] = faceCenter[1] - camPosition[1]
+      camToCenter[2] = faceCenter[2] - camPosition[2]
+      const camToCenterDist = glmatrix.vec3.length(camToCenter)
+      glmatrix.vec3.normalize(camToCenter, camToCenter)
+
+      const dotProd = glmatrix.vec3.dot(faceNormal, camToCenter)
+
+      if (dotProd >= 0) {
+        continue
+      }
+
+      // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+      const allVerticesOfFace2D = [] // in the form [x, y, x, y, ...]
+      let allProjectionsAreOutsideFrustrum = true
+      for (let v = 0; v < vpf; v += 1) {
+        const offset = faces[v0Index + v] * 3
+        tmpCoord[0] = vertices[offset]
+        tmpCoord[1] = vertices[offset + 1]
+        tmpCoord[2] = vertices[offset + 2]
+        // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+        glmatrix.vec3.transformMat4(tmpCoord, tmpCoord, mvpMat)
+
+        const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                || tmpCoord[0] <= -1
+                                || tmpCoord[1] >= 1
+                                || tmpCoord[1] <= -1
+                                || tmpCoord[2] >= 1
+                                || tmpCoord[2] <= -1)
+        allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum
+
+        const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord)
+        allVerticesOfFace2D.push(canvasPos[0], canvasPos[1])
+      }
+
+      // all the vertices must be oustise to not render
+      if (allProjectionsAreOutsideFrustrum) {
+        continue
+      }
+
+      // Compute thickness of stroke
+      const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * camToCenterDist)) * (this._height / 2)
+
+
+      polygonsToRender.push({
+        points2D: allVerticesOfFace2D,
+        thickness,
+        distanceToCam: camToCenterDist,
+      })
+    }
+
+    polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+      meshView.addFaceOpaquePlain(polygon.points2D, polygon.thickness)
+    })
+
+    this._canvas.appendChild(meshView.view)
+  }
+
+
+
+
+
+
+
+
+
+
+
+  _renderDebug(mesh, mvpMat) {
+    const meshView = mesh.meshView
+    meshView.reset()
+    const vertices = mesh.worldVertices
+    const faces = mesh.faces
+    const faceNormals = mesh.faceNormalsWorld
+    const faceCenters = mesh.faceCentersWorld
+    const camPosition = this._camera.position
+    const vpf = mesh.verticesPerFace
+    const nbFaces = faces.length / vpf
+
+    const faceNormal = glmatrix.vec3.create()
+    const faceCenter = glmatrix.vec3.create()
+    const camToCenter = glmatrix.vec3.create()
+    const normalTip = glmatrix.vec3.create()
+    const tmp = glmatrix.vec3.create()
+
+    // will be filled with
+    const polygonsToRender = []
+    const tmpCoord = glmatrix.vec3.create()
+
+    for (let f = 0; f < nbFaces; f += 1) {
+      const v0Index = f * vpf
+
+      // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+      // IOW, if dot product >= 1
+      faceNormal[0] = faceNormals[f * 3]
+      faceNormal[1] = faceNormals[f * 3 + 1]
+      faceNormal[2] = faceNormals[f * 3 + 2]
+
+      faceCenter[0] = faceCenters[f * 3]
+      faceCenter[1] = faceCenters[f * 3 + 1]
+      faceCenter[2] = faceCenters[f * 3 + 2]
+
+      camToCenter[0] = faceCenter[0] - camPosition[0]
+      camToCenter[1] = faceCenter[1] - camPosition[1]
+      camToCenter[2] = faceCenter[2] - camPosition[2]
+      const camToCenterDist = glmatrix.vec3.length(camToCenter)
+      glmatrix.vec3.normalize(camToCenter, camToCenter)
+
+      // compute face center in 2D
+      glmatrix.vec3.transformMat4(tmp, faceCenter, mvpMat)
+      const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp)
+
+      if (isNaN(faceCenter2D[0])) {
+        console.log('number is nan')
+      }
+
+      // compute the normal vector in 2D
+      normalTip[0] = faceCenter[0] + faceNormal[0] * 0.2
+      normalTip[1] = faceCenter[1] + faceNormal[1] * 0.2
+      normalTip[2] = faceCenter[2] + faceNormal[2] * 0.2
+      glmatrix.vec3.transformMat4(tmp, normalTip, mvpMat)
+      const normalTip2D = this._unit2DPositionToCanvasPosition(tmp)
+
+      // if (dotProd >= 0) {
+      //   continue
+      // }
+
+      // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+      const allVerticesOfFace2D = [] // in the form [x, y, x, y, ...]
+      let allProjectionsAreOutsideFrustrum = true
+      for (let v = 0; v < vpf; v += 1) {
+        const offset = faces[v0Index + v] * 3
+        tmpCoord[0] = vertices[offset]
+        tmpCoord[1] = vertices[offset + 1]
+        tmpCoord[2] = vertices[offset + 2]
+        // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+        glmatrix.vec3.transformMat4(tmpCoord, tmpCoord, mvpMat)
+
+        const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                || tmpCoord[0] <= -1
+                                || tmpCoord[1] >= 1
+                                || tmpCoord[1] <= -1
+                                || tmpCoord[2] >= 1
+                                || tmpCoord[2] <= -1)
+        allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum
+
+        const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord)
+        allVerticesOfFace2D.push(canvasPos[0], canvasPos[1])
+      }
+
+      // // all the vertices must be oustise to not render
+      // if (allProjectionsAreOutsideFrustrum) {
+      //   continue
+      // }
+
+      
+
+      polygonsToRender.push({
+        points2D: allVerticesOfFace2D,
+        faceCenter2D,
+        normalTip2D,
+        distanceToCam: camToCenterDist,
+      })
+    }
+
+    polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+      // adding the face
+      meshView.addFaceOpaquePlain(polygon.points2D, 0.3)
+
+      // adding the polygon center circle
+      meshView.addCircle(polygon.faceCenter2D[0], polygon.faceCenter2D[1], 3)
+
+      // adding the normal line
+      meshView.addLine(polygon.faceCenter2D[0], polygon.faceCenter2D[1], polygon.normalTip2D[0], polygon.normalTip2D[1], 0.3)
+    })
 
     this._canvas.appendChild(meshView.view)
   }

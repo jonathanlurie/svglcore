@@ -81,7 +81,7 @@
       Try grabbing the bunny and move the camera around. You can also scroll to zoom in and out.
     </p>
     <p>
-      While moving, only few edges are randomly showing, in addition to the bounding box, because showing them all would be too costly. When the mouse is released, the mesh is fully shown again.
+      While moving, only few edges are randomly showing, because showing them all would be too costly. When the mouse is released, the mesh is fully shown again.
     </p>
   </div>
   <div id="fps-info"></div>
@@ -96,7 +96,7 @@
     const fpsInfo = document.getElementById('fps-info')
     let mouseDown = false
 
-    const objRes = await fetch('meshes/bunny_med.obj')
+    const objRes = await fetch('meshes/bunny_lo.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -120,8 +120,7 @@
 
     // center the mesh on its center (world center)
     mesh.position = mesh.boundingBox.center.map((coord) => -coord)
-    mesh.showBoundingBox = false
-    mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
+    mesh.renderMode = svglcore.RENDER_MODES.DEBUG_GEOMETRY
 
     const scene = new svglcore.Scene()
     scene.add(mesh)
@@ -152,15 +151,13 @@
 
     parentDiv.addEventListener('mousedown', (evt) => {
       mouseDown = true
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
-      mesh.showBoundingBox = true
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
       needRender = true
     })
 
     parentDiv.addEventListener('mouseup', (evt) => {
       mouseDown = false
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
-      mesh.showBoundingBox = false
+      mesh.renderMode = svglcore.RENDER_MODES.DEBUG_GEOMETRY
       needRender = true
     })
 
@@ -176,8 +173,7 @@
     let timer = null
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
-      mesh.showBoundingBox = true
+      mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
       camera.dolly(evt.deltaY / 10.)
       needRender = true
 
@@ -187,8 +183,7 @@
       }
 
       timer = setTimeout(function() {
-        mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME
-        mesh.showBoundingBox = false
+        mesh.renderMode = svglcore.RENDER_MODES.DEBUG_GEOMETRY
         needRender = true
       }, 50)
     })

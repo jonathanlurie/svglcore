@@ -1290,8 +1290,10 @@
   var RENDER_MODES = {
     POINT_CLOUD: 0,
     POLYLINE: 1,
-    TRIANGLE_WIREFRAME: 2,
-    TRIANGLE_WIREFRAME_RANDOM_SUB: 3,
+    WIREFRAME: 2,
+    WIREFRAME_RANDOM_SUB: 3,
+    FACE_OPAQUE_PLAIN: 4,
+    DEBUG_GEOMETRY: 5,
   };
 
   var CONSTANTS = {
@@ -1316,6 +1318,9 @@
 
       this._linePool = [];
       this._linePoolCounter = 0;
+
+      this._polygonPool = [];
+      this._polygonPoolCounter = 0;
     }
 
 
@@ -1337,6 +1342,7 @@
       // }
       this._circlePoolCounter = 0;
       this._linePoolCounter = 0;
+      this._polygonPoolCounter = 0;
     }
 
 
@@ -1364,7 +1370,7 @@
       circle.setAttributeNS(null, 'cy', y);
       circle.setAttributeNS(null, 'r', radius);
       // circle.setAttributeNS(null, 'id', this._mesh.id)
-      circle.setAttributeNS(null, 'style', `fill: ${this._mesh.color}; opacity: ${this._mesh.opacity}; stroke-width: 0;`);
+      circle.setAttributeNS(null, 'style', `fill: ${this._mesh.edgeColor}; opacity: ${this._mesh.opacity}; stroke-width: 0;`);
 
       this._view.appendChild(circle);
     }
@@ -1378,7 +1384,7 @@
         line = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'line');
         this._linePool.push(line);
       } else {
-      // The pool is large enough, we borrow a circle from the pool
+      // The pool is large enough, we borrow a line from the pool
         line = this._linePool[this._linePoolCounter];
       }
 
@@ -1387,8 +1393,35 @@
       line.setAttributeNS(null, 'y1', yA);
       line.setAttributeNS(null, 'x2', xB);
       line.setAttributeNS(null, 'y2', yB);
-      line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.color}`);
+      line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.edgeColor}`);
       this._view.appendChild(line);
+    }
+
+
+    addFaceOpaquePlain(xyArr, thickness) {
+      let polygon = null;
+      const mesh = this._mesh;
+
+      // the pool is not large enough, we create a new polygon
+      if (this._polygonPool.length < this._polygonPoolCounter + 1) {
+        polygon = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'polygon');
+        this._polygonPool.push(polygon);
+      } else {
+      // The pool is large enough, we borrow a polygon from the pool
+        polygon = this._polygonPool[this._polygonPoolCounter];
+      }
+
+      this._polygonPoolCounter += 1;
+
+      let pointsStr = '';
+      for (let i = 0; i < xyArr.length - 1; i += 2) {
+        pointsStr += `${xyArr[i]},${xyArr[i + 1]} `;
+      }
+
+      polygon.setAttributeNS(null, 'points', pointsStr);
+      polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColor}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColor}; stroke-width: ${thickness}`);
+      // polygon.setAttributeNS(null, 'style', `fill: none; stroke: ${mesh.edgeColor}; stroke-width: 0.3;`)
+      this._view.appendChild(polygon);
     }
   }
 
@@ -1420,7 +1453,8 @@
 
       // material data
       this._renderMode = RENDER_MODES.POINT_CLOUD;
-      this._color = '#000';
+      this._edgeColor = '#000000';
+      this._faceColor = '#EEEEEE';
       this._opacity = 1;
       this._lineThickness = 1;
       this._radius = 1;
@@ -1544,13 +1578,21 @@
     }
 
 
-    set color(c) {
-      this._color = c;
+    set edgeColor(c) {
+      this._edgeColor = c;
     }
 
 
-    get color() {
-      return this._color
+    get edgeColor() {
+      return this._edgeColor
+    }
+
+    set faceColor(c) {
+      this._faceColor = c;
+    }
+
+    get faceColor() {
+      return this._faceColor
     }
 
 
@@ -1776,7 +1818,8 @@
       cpMesh.quaternion = this.quaternion;
       cpMesh.scale = this.scale;
       cpMesh.verticesPerFace = this.verticesPerFace;
-      cpMesh.color = this.color;
+      cpMesh.edgeColor = this.edgeColor;
+      cpMesh.faceColor = this.faceColor;
       cpMesh.opacity = this.opacity;
       cpMesh.radius = this.radius;
       cpMesh.lineThickness = this.lineThickness;
@@ -1790,7 +1833,7 @@
 
     _computeFaceCentersWorld() {
       // just to make sure they are built
-      const wv = this.worldVertices();
+      const wv = this.worldVertices;
 
       const faces = this._faces;
       const vpf = this._verticesPerFace;
@@ -1836,7 +1879,7 @@
 
     _computeFaceNormalWorld() {
       // just to make sure they are built
-      const wv = this.worldVertices();
+      const wv = this.worldVertices;
 
       const faces = this._faces;
       const vpf = this._verticesPerFace;
@@ -1854,17 +1897,19 @@
         ab[0] = wv[indexB] - wv[indexA];
         ab[1] = wv[indexB + 1] - wv[indexA + 1];
         ab[2] = wv[indexB + 2] - wv[indexA + 2];
+        normalize(ab, ab);
 
         bc[0] = wv[indexC] - wv[indexB];
         bc[1] = wv[indexC + 1] - wv[indexB + 1];
         bc[2] = wv[indexC + 2] - wv[indexB + 2];
+        normalize(bc, bc);
 
         cross(n, ab, bc);
+        normalize(n, n);
         faceNormalsWorld.push(n[0], n[1], n[2]);
       }
 
       this._faceNormalsWorld = new Float32Array(faceNormalsWorld);
-
       this._faceNormalsWorldNeedUpdate = false;
     }
 
@@ -2179,11 +2224,17 @@
           case RENDER_MODES.POINT_CLOUD:
             this._renderPointCloud(mesh, modelViewProjMat);
             break
-          case RENDER_MODES.TRIANGLE_WIREFRAME:
-            this._renderEdges(mesh, modelViewProjMat);
+          case RENDER_MODES.WIREFRAME:
+            this._renderWireframe(mesh, modelViewProjMat);
             break
-          case RENDER_MODES.TRIANGLE_WIREFRAME_RANDOM_SUB:
-            this._renderEdgesRandomSub(mesh, modelViewProjMat);
+          case RENDER_MODES.WIREFRAME_RANDOM_SUB:
+            this._renderWireframeRandomSub(mesh, modelViewProjMat);
+            break
+          case RENDER_MODES.FACE_OPAQUE_PLAIN:
+            this._renderFaceOpaquePlain(mesh, modelViewProjMat);
+            break
+          case RENDER_MODES.DEBUG_GEOMETRY:
+            this._renderDebug(mesh, modelViewProjMat);
             break
           default: throw new Error('Only point cloud rendering is implemented for the moment.')
         }
@@ -2363,7 +2414,7 @@
     }
 
 
-    _renderEdges(mesh, mvpMat) {
+    _renderWireframe(mesh, mvpMat) {
       const meshView = mesh.meshView;
       const vertices = mesh.worldVertices;
       const uniqueEdges = mesh.uniqueEdges;
@@ -2419,7 +2470,7 @@
 
 
 
-    _renderEdgesRandomSub(mesh, mvpMat) {
+    _renderWireframeRandomSub(mesh, mvpMat) {
       const meshView = mesh.meshView;
       const vertices = mesh.worldVertices;
       const uniqueEdges = mesh.uniqueEdges;
@@ -2484,6 +2535,211 @@
       if (mesh.showBoundingBox) {
         this._addBoundingBox(mesh, mvpMat);
       }
+
+      this._canvas.appendChild(meshView.view);
+    }
+
+
+    _renderFaceOpaquePlain(mesh, mvpMat) {
+      const meshView = mesh.meshView;
+      meshView.reset();
+      const vertices = mesh.worldVertices;
+      const faces = mesh.faces;
+      const faceNormals = mesh.faceNormalsWorld;
+      const faceCenters = mesh.faceCentersWorld;
+      const camPosition = this._camera.position;
+      const vpf = mesh.verticesPerFace;
+      const nbFaces = faces.length / vpf;
+
+      const faceNormal = create$2();
+      const faceCenter = create$2();
+      const camToCenter = create$2();
+
+      // will be filled with
+      const polygonsToRender = [];
+      const tmpCoord = create$2();
+
+      for (let f = 0; f < nbFaces; f += 1) {
+        const v0Index = f * vpf;
+
+        // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+        // IOW, if dot product >= 1
+        faceNormal[0] = faceNormals[v0Index * 3];
+        faceNormal[1] = faceNormals[v0Index * 3 + 1];
+        faceNormal[2] = faceNormals[v0Index * 3 + 2];
+
+        faceCenter[0] = faceCenters[v0Index * 3];
+        faceCenter[1] = faceCenters[v0Index * 3 + 1];
+        faceCenter[2] = faceCenters[v0Index * 3 + 2];
+
+        camToCenter[0] = faceCenter[0] - camPosition[0];
+        camToCenter[1] = faceCenter[1] - camPosition[1];
+        camToCenter[2] = faceCenter[2] - camPosition[2];
+        const camToCenterDist = length(camToCenter);
+        normalize(camToCenter, camToCenter);
+
+        const dotProd = dot(faceNormal, camToCenter);
+
+        if (dotProd >= 0) {
+          continue
+        }
+
+        // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+        const allVerticesOfFace2D = []; // in the form [x, y, x, y, ...]
+        let allProjectionsAreOutsideFrustrum = true;
+        for (let v = 0; v < vpf; v += 1) {
+          const offset = faces[v0Index + v] * 3;
+          tmpCoord[0] = vertices[offset];
+          tmpCoord[1] = vertices[offset + 1];
+          tmpCoord[2] = vertices[offset + 2];
+          // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+          transformMat4(tmpCoord, tmpCoord, mvpMat);
+
+          const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                  || tmpCoord[0] <= -1
+                                  || tmpCoord[1] >= 1
+                                  || tmpCoord[1] <= -1
+                                  || tmpCoord[2] >= 1
+                                  || tmpCoord[2] <= -1);
+          allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum;
+
+          const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord);
+          allVerticesOfFace2D.push(canvasPos[0], canvasPos[1]);
+        }
+
+        // all the vertices must be oustise to not render
+        if (allProjectionsAreOutsideFrustrum) {
+          continue
+        }
+
+        // Compute thickness of stroke
+        const thickness = (mesh.lineThickness / (Math.tan(this._camera.fieldOfView / 2) * camToCenterDist)) * (this._height / 2);
+
+
+        polygonsToRender.push({
+          points2D: allVerticesOfFace2D,
+          thickness,
+          distanceToCam: camToCenterDist,
+        });
+      }
+
+      polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+        meshView.addFaceOpaquePlain(polygon.points2D, polygon.thickness);
+      });
+
+      this._canvas.appendChild(meshView.view);
+    }
+
+
+
+
+
+
+
+
+
+
+
+    _renderDebug(mesh, mvpMat) {
+      const meshView = mesh.meshView;
+      meshView.reset();
+      const vertices = mesh.worldVertices;
+      const faces = mesh.faces;
+      const faceNormals = mesh.faceNormalsWorld;
+      const faceCenters = mesh.faceCentersWorld;
+      const camPosition = this._camera.position;
+      const vpf = mesh.verticesPerFace;
+      const nbFaces = faces.length / vpf;
+
+      const faceNormal = create$2();
+      const faceCenter = create$2();
+      const camToCenter = create$2();
+      const normalTip = create$2();
+      const tmp = create$2();
+
+      // will be filled with
+      const polygonsToRender = [];
+      const tmpCoord = create$2();
+
+      for (let f = 0; f < nbFaces; f += 1) {
+        const v0Index = f * vpf;
+
+        // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+        // IOW, if dot product >= 1
+        faceNormal[0] = faceNormals[f * 3];
+        faceNormal[1] = faceNormals[f * 3 + 1];
+        faceNormal[2] = faceNormals[f * 3 + 2];
+
+        faceCenter[0] = faceCenters[f * 3];
+        faceCenter[1] = faceCenters[f * 3 + 1];
+        faceCenter[2] = faceCenters[f * 3 + 2];
+
+        camToCenter[0] = faceCenter[0] - camPosition[0];
+        camToCenter[1] = faceCenter[1] - camPosition[1];
+        camToCenter[2] = faceCenter[2] - camPosition[2];
+        const camToCenterDist = length(camToCenter);
+        normalize(camToCenter, camToCenter);
+
+        // compute face center in 2D
+        transformMat4(tmp, faceCenter, mvpMat);
+        const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp);
+
+        if (isNaN(faceCenter2D[0])) {
+          console.log('number is nan');
+        }
+
+        // compute the normal vector in 2D
+        normalTip[0] = faceCenter[0] + faceNormal[0] * 0.2;
+        normalTip[1] = faceCenter[1] + faceNormal[1] * 0.2;
+        normalTip[2] = faceCenter[2] + faceNormal[2] * 0.2;
+        transformMat4(tmp, normalTip, mvpMat);
+        const normalTip2D = this._unit2DPositionToCanvasPosition(tmp);
+
+        // if (dotProd >= 0) {
+        //   continue
+        // }
+
+        // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+        const allVerticesOfFace2D = []; // in the form [x, y, x, y, ...]
+        for (let v = 0; v < vpf; v += 1) {
+          const offset = faces[v0Index + v] * 3;
+          tmpCoord[0] = vertices[offset];
+          tmpCoord[1] = vertices[offset + 1];
+          tmpCoord[2] = vertices[offset + 2];
+          // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+          transformMat4(tmpCoord, tmpCoord, mvpMat);
+
+          const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord);
+          allVerticesOfFace2D.push(canvasPos[0], canvasPos[1]);
+        }
+
+        // // all the vertices must be oustise to not render
+        // if (allProjectionsAreOutsideFrustrum) {
+        //   continue
+        // }
+
+        
+
+        polygonsToRender.push({
+          points2D: allVerticesOfFace2D,
+          faceCenter2D,
+          normalTip2D,
+          distanceToCam: camToCenterDist,
+        });
+      }
+
+      polygonsToRender.sort((a, b) => (a > b ? -1 : 1)).forEach((polygon) => {
+        // adding the face
+        meshView.addFaceOpaquePlain(polygon.points2D, 0.3);
+
+        // adding the polygon center circle
+        meshView.addCircle(polygon.faceCenter2D[0], polygon.faceCenter2D[1], 3);
+
+        // adding the normal line
+        meshView.addLine(polygon.faceCenter2D[0], polygon.faceCenter2D[1], polygon.normalTip2D[0], polygon.normalTip2D[1], 0.3);
+      });
 
       this._canvas.appendChild(meshView.view);
     }
