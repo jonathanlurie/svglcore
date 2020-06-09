@@ -2,6 +2,7 @@ import * as glmatrix from 'gl-matrix'
 import Tools from './Tools'
 import RENDER_MODES from './renderModes'
 import MeshView from './MeshView'
+import Color from './Color'
 
 
 class Mesh {
@@ -32,8 +33,10 @@ class Mesh {
 
     // material data
     this._renderMode = RENDER_MODES.POINT_CLOUD
-    this._edgeColor = '#000000'
-    this._faceColor = '#EEEEEE'
+    this._edgeColor = [0, 0, 0]
+    this._edgeColorCss = Color.rgbToCssRgb(this._edgeColor)
+    this._faceColor = [200, 200, 200]
+    this._faceColorCss = Color.rgbToCssRgb(this._faceColor)
     this._opacity = 1
     this._lineThickness = 1
     this._radius = 1
@@ -158,7 +161,8 @@ class Mesh {
 
 
   set edgeColor(c) {
-    this._edgeColor = c
+    this._edgeColor = Color.whateverToRgb(c)
+    this._edgeColorCss = Color.rgbToCssRgb(this._edgeColor)
   }
 
 
@@ -166,12 +170,25 @@ class Mesh {
     return this._edgeColor
   }
 
-  set faceColor(c) {
-    this._faceColor = c
+
+  get edgeColorCss() {
+    return this._edgeColorCss
   }
+
+
+  set faceColor(c) {
+    this._faceColor = Color.whateverToRgb(c)
+    this._faceColorCss = Color.rgbToCssRgb(this._faceColor)
+  }
+
 
   get faceColor() {
     return this._faceColor
+  }
+
+
+  get faceColorCss() {
+    return this._faceColorCss
   }
 
 

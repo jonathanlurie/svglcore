@@ -69,7 +69,7 @@ class MeshView {
     circle.setAttributeNS(null, 'cy', y)
     circle.setAttributeNS(null, 'r', radius)
     // circle.setAttributeNS(null, 'id', this._mesh.id)
-    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.edgeColor}; opacity: ${this._mesh.opacity}; stroke-width: 0;`)
+    circle.setAttributeNS(null, 'style', `fill: ${this._mesh.edgeColorCss}; opacity: ${this._mesh.opacity}; stroke-width: 0;`)
 
     this._view.appendChild(circle)
   }
@@ -92,7 +92,7 @@ class MeshView {
     line.setAttributeNS(null, 'y1', yA)
     line.setAttributeNS(null, 'x2', xB)
     line.setAttributeNS(null, 'y2', yB)
-    line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.edgeColor}`)
+    line.setAttributeNS(null, 'style', `fill: none; opacity: ${this._mesh.opacity}; stroke-width: ${thickness}; stroke: ${this._mesh.edgeColorCss}`)
     this._view.appendChild(line)
   }
 
@@ -118,7 +118,7 @@ class MeshView {
     }
 
     polygon.setAttributeNS(null, 'points', pointsStr)
-    polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColor}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColor}; stroke-width: ${thickness}`)
+    polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColorCss}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColorCss}; stroke-width: ${thickness}`)
     this._view.appendChild(polygon)
   }
 }
