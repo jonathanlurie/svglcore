@@ -5,6 +5,7 @@ import Scene from './Scene'
 import PerspectiveCamera from './PerspectiveCamera'
 import CONSTANTS from './Constants'
 import RENDER_MODES from './renderModes'
+import Color from './Color'
 
 class Renderer {
   constructor(parentDiv, options) {
@@ -110,18 +111,27 @@ class Renderer {
         case RENDER_MODES.POINT_CLOUD:
           this._renderPointCloud(mesh, modelViewProjMat)
           break
+
         case RENDER_MODES.WIREFRAME:
           this._renderWireframe(mesh, modelViewProjMat)
           break
+
         case RENDER_MODES.WIREFRAME_RANDOM_SUB:
           this._renderWireframeRandomSub(mesh, modelViewProjMat)
           break
+
         case RENDER_MODES.FACE_OPAQUE_PLAIN:
           this._renderFaceOpaquePlain(mesh, modelViewProjMat)
           break
+
         case RENDER_MODES.DEBUG_GEOMETRY:
           this._renderDebug(mesh, modelViewProjMat)
           break
+
+        case RENDER_MODES.FACE_LIGHT:
+          this._renderFaceLight(mesh, modelViewProjMat)
+          break
+
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     })
@@ -645,6 +655,139 @@ class Renderer {
 
     this._canvas.appendChild(meshView.view)
   }
+
+
+
+
+
+
+
+
+
+
+  _renderFaceLight(mesh, mvpMat) {
+    const meshView = mesh.meshView
+    meshView.reset()
+    const vertices = mesh.worldVertices
+    const faces = mesh.faces
+    const faceNormals = mesh.faceNormalsWorld
+    const faceCenters = mesh.faceCentersWorld
+    const camPosition = this._camera.position
+    const vpf = mesh.verticesPerFace
+    const nbFaces = faces.length / vpf
+    const meshColor = mesh.faceColor
+    const meshSpecularity = mesh.specularity
+    const A_SMALL_BIT = 0.75
+
+    const faceNormal = glmatrix.vec3.create()
+    const faceCenter = glmatrix.vec3.create()
+    const camToCenter = glmatrix.vec3.create()
+    const tmp = glmatrix.vec3.create()
+
+    // const ambientLights = this._scene.getLightsByType(Light.TYPES.AMBIANT)
+    // const pointLights = this._scene.getLightsByType(Light.TYPES.POINT)
+    const allLights = this._scene.getAllLights()
+
+    // will be filled with
+    const polygonsToRender = []
+    const tmpCoord = glmatrix.vec3.create()
+
+    for (let f = 0; f < nbFaces; f += 1) {
+      const v0Index = f * vpf
+
+      // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+      // IOW, if dot product >= 1
+      faceNormal[0] = faceNormals[f * 3]
+      faceNormal[1] = faceNormals[f * 3 + 1]
+      faceNormal[2] = faceNormals[f * 3 + 2]
+
+      faceCenter[0] = faceCenters[f * 3]
+      faceCenter[1] = faceCenters[f * 3 + 1]
+      faceCenter[2] = faceCenters[f * 3 + 2]
+
+      camToCenter[0] = faceCenter[0] - camPosition[0]
+      camToCenter[1] = faceCenter[1] - camPosition[1]
+      camToCenter[2] = faceCenter[2] - camPosition[2]
+      const camToCenterDist = glmatrix.vec3.length(camToCenter)
+      glmatrix.vec3.normalize(camToCenter, camToCenter)
+
+      // discard faces with normal on the wrong direction
+      const dotProd = glmatrix.vec3.dot(faceNormal, camToCenter)
+      if (dotProd >= 0) {
+        continue
+      }
+
+      glmatrix.vec3.transformMat4(tmp, faceCenter, mvpMat)
+      const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp)
+
+      // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+      const allVerticesOfFace2D = [] // in the form [x, y, x, y, ...]
+      let allProjectionsAreOutsideFrustrum = true
+      for (let v = 0; v < vpf; v += 1) {
+        const offset = faces[v0Index + v] * 3
+        tmpCoord[0] = vertices[offset]
+        tmpCoord[1] = vertices[offset + 1]
+        tmpCoord[2] = vertices[offset + 2]
+        // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+        glmatrix.vec3.transformMat4(tmpCoord, tmpCoord, mvpMat)
+
+        const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                || tmpCoord[0] <= -1
+                                || tmpCoord[1] >= 1
+                                || tmpCoord[1] <= -1
+                                || tmpCoord[2] >= 1
+                                || tmpCoord[2] <= -1)
+        allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum
+        const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord)
+
+        // we extend the face polygon just a tiny bit so that the stitches between two faces does not show
+        tmp[0] = canvasPos[0] - faceCenter2D[0]
+        tmp[1] = canvasPos[1] - faceCenter2D[1]
+        glmatrix.vec3.normalize(tmp, tmp)
+
+        allVerticesOfFace2D.push(canvasPos[0] + tmp[0] * A_SMALL_BIT, canvasPos[1] + tmp[1] * A_SMALL_BIT)
+      }
+
+      // all the vertices must be oustise to not render
+      if (allProjectionsAreOutsideFrustrum) {
+        continue
+      }
+
+      // compute light.
+      // 1. start from black color
+      const faceColor = [0, 0, 0]
+
+      // 2. Add contributions from each lights
+      allLights.forEach((l) => {
+        const colorToAdd = l.computeLight({
+          surfaceColor: meshColor,
+          illuminatedPosition: faceCenter,
+          illuminatedNormal: faceNormal,
+          specularity: meshSpecularity,
+          cameraPosition: camPosition,
+        })
+
+        faceColor[0] += colorToAdd[0]
+        faceColor[1] += colorToAdd[1]
+        faceColor[2] += colorToAdd[2]
+      })
+
+      polygonsToRender.push({
+        points2D: allVerticesOfFace2D,
+        faceColor,
+        distanceToCam: camToCenterDist,
+      })
+    }
+
+    polygonsToRender.sort((a, b) => (a.distanceToCam > b.distanceToCam ? -1 : 1)).forEach((polygon) => {
+      // adding the face
+      meshView.addFaceColorNoStroke(polygon.points2D, Color.rgbToCssRgb(polygon.faceColor))
+    })
+
+    this._canvas.appendChild(meshView.view)
+  }
+
 
 }
 

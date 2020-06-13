@@ -5,4 +5,5 @@ export default {
   WIREFRAME_RANDOM_SUB: 3,
   FACE_OPAQUE_PLAIN: 4,
   DEBUG_GEOMETRY: 5,
+  FACE_LIGHT: 6,
 }

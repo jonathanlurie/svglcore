@@ -1,13 +1,19 @@
 import * as glmatrix from 'gl-matrix'
 import Color from './Color'
+import Tools from './Tools'
 
 
 class Light {
   constructor() {
+    this._id = Tools.uuidv4()
     this._position = glmatrix.vec3.create()
     this._color = glmatrix.vec3.fromValues(255, 255, 255)
     this._type = null
     this._intensity = 1
+  }
+
+  get id() {
+    return this._id
   }
 
 
@@ -50,11 +56,6 @@ class Light {
   computeLight() {
     throw new Error('The Light class is only an interface. Use classes that extends it instead.')
   }
-}
-
-Light.prototype.TYPES = {
-  AMBIANT: 1,
-  POINT: 2,
 }
 
 export default Light

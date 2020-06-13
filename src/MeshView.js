@@ -121,6 +121,35 @@ class MeshView {
     polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColorCss}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColorCss}; stroke-width: ${thickness}`)
     this._view.appendChild(polygon)
   }
+
+
+
+
+
+  addFaceColorNoStroke(xyArr, color) {
+    let polygon = null
+    const mesh = this._mesh
+
+    // the pool is not large enough, we create a new polygon
+    if (this._polygonPool.length < this._polygonPoolCounter + 1) {
+      polygon = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'polygon')
+      this._polygonPool.push(polygon)
+    } else {
+    // The pool is large enough, we borrow a polygon from the pool
+      polygon = this._polygonPool[this._polygonPoolCounter]
+    }
+
+    this._polygonPoolCounter += 1
+
+    let pointsStr = ''
+    for (let i = 0; i < xyArr.length - 1; i += 2) {
+      pointsStr += `${xyArr[i]},${xyArr[i + 1]} `
+    }
+
+    polygon.setAttributeNS(null, 'points', pointsStr)
+    polygon.setAttributeNS(null, 'style', `fill: ${color}; opacity: ${mesh.opacity}; stroke-width: 0;`)
+    this._view.appendChild(polygon)
+  }
 }
 
 export default MeshView

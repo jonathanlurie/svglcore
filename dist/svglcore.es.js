@@ -20,6 +20,7 @@ var RENDER_MODES = {
   WIREFRAME_RANDOM_SUB: 3,
   FACE_OPAQUE_PLAIN: 4,
   DEBUG_GEOMETRY: 5,
+  FACE_LIGHT: 6,
 };
 
 var CONSTANTS = {
@@ -146,6 +147,35 @@ class MeshView {
 
     polygon.setAttributeNS(null, 'points', pointsStr);
     polygon.setAttributeNS(null, 'style', `fill: ${mesh.faceColorCss}; opacity: ${mesh.opacity}; stroke: ${mesh.edgeColorCss}; stroke-width: ${thickness}`);
+    this._view.appendChild(polygon);
+  }
+
+
+
+
+
+  addFaceColorNoStroke(xyArr, color) {
+    let polygon = null;
+    const mesh = this._mesh;
+
+    // the pool is not large enough, we create a new polygon
+    if (this._polygonPool.length < this._polygonPoolCounter + 1) {
+      polygon = document.createElementNS(CONSTANTS.SVG_NAMESPACE, 'polygon');
+      this._polygonPool.push(polygon);
+    } else {
+    // The pool is large enough, we borrow a polygon from the pool
+      polygon = this._polygonPool[this._polygonPoolCounter];
+    }
+
+    this._polygonPoolCounter += 1;
+
+    let pointsStr = '';
+    for (let i = 0; i < xyArr.length - 1; i += 2) {
+      pointsStr += `${xyArr[i]},${xyArr[i + 1]} `;
+    }
+
+    polygon.setAttributeNS(null, 'points', pointsStr);
+    polygon.setAttributeNS(null, 'style', `fill: ${color}; opacity: ${mesh.opacity}; stroke-width: 0;`);
     this._view.appendChild(polygon);
   }
 }
@@ -899,9 +929,65 @@ class Mesh {
   }
 }
 
+class Light {
+  constructor() {
+    this._id = Tools.uuidv4();
+    this._position = vec3.create();
+    this._color = vec3.fromValues(255, 255, 255);
+    this._type = null;
+    this._intensity = 1;
+  }
+
+  get id() {
+    return this._id
+  }
+
+
+  set color(c) {
+    this._color = Color.whateverToRgb(c);
+  }
+
+
+  get color() {
+    return this._color
+  }
+
+
+  get type() {
+    return this._type
+  }
+
+
+  set position(p) {
+    this._position = p;
+  }
+
+
+  get position() {
+    return this._position
+  }
+
+
+  set intensity(i) {
+    this._intensity = i;
+  }
+
+
+  get intensity() {
+    return this._intensity
+  }
+
+
+  // eslint-disable-next-line class-methods-use-this
+  computeLight() {
+    throw new Error('The Light class is only an interface. Use classes that extends it instead.')
+  }
+}
+
 class Scene {
   constructor() {
     this._objects = [];
+    this._lights = [];
   }
 
 
@@ -930,9 +1016,56 @@ class Scene {
     return this._objects.filter(m => m.id === meshId)
   }
 
-  
+
   getAll() {
     return this._objects
+  }
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  addLight(light) {
+    if (light instanceof Light) {
+      this._lights.push(light);
+    } else {
+      throw new Error('The provided object is not a Light.')
+    }
+
+    return this
+  }
+
+
+  removeLight(lightId) {
+    for (let i = this._lights.length - 1; i >= 0; i -= 1) {
+      if (this._lights[i].id === lightId) {
+        this._lights.splice(i, 1);
+      }
+    }
+    return this
+  }
+
+
+  getLight(lightId) {
+    return this._lights.filter((l) => l.id === lightId)
+  }
+
+
+  getAllLights() {
+    return this._lights
+  }
+
+
+  getLightsByType(lightType) {
+    return this._lights.filter((l) => l.type === lightType)
   }
 }
 
@@ -1197,18 +1330,27 @@ class Renderer {
         case RENDER_MODES.POINT_CLOUD:
           this._renderPointCloud(mesh, modelViewProjMat);
           break
+
         case RENDER_MODES.WIREFRAME:
           this._renderWireframe(mesh, modelViewProjMat);
           break
+
         case RENDER_MODES.WIREFRAME_RANDOM_SUB:
           this._renderWireframeRandomSub(mesh, modelViewProjMat);
           break
+
         case RENDER_MODES.FACE_OPAQUE_PLAIN:
           this._renderFaceOpaquePlain(mesh, modelViewProjMat);
           break
+
         case RENDER_MODES.DEBUG_GEOMETRY:
           this._renderDebug(mesh, modelViewProjMat);
           break
+
+        case RENDER_MODES.FACE_LIGHT:
+          this._renderFaceLight(mesh, modelViewProjMat);
+          break
+
         default: throw new Error('Only point cloud rendering is implemented for the moment.')
       }
     });
@@ -1733,6 +1875,139 @@ class Renderer {
     this._canvas.appendChild(meshView.view);
   }
 
+
+
+
+
+
+
+
+
+
+  _renderFaceLight(mesh, mvpMat) {
+    const meshView = mesh.meshView;
+    meshView.reset();
+    const vertices = mesh.worldVertices;
+    const faces = mesh.faces;
+    const faceNormals = mesh.faceNormalsWorld;
+    const faceCenters = mesh.faceCentersWorld;
+    const camPosition = this._camera.position;
+    const vpf = mesh.verticesPerFace;
+    const nbFaces = faces.length / vpf;
+    const meshColor = mesh.faceColor;
+    const meshSpecularity = mesh.specularity;
+    const A_SMALL_BIT = 0.75;
+
+    const faceNormal = vec3.create();
+    const faceCenter = vec3.create();
+    const camToCenter = vec3.create();
+    const tmp = vec3.create();
+
+    // const ambientLights = this._scene.getLightsByType(Light.TYPES.AMBIANT)
+    // const pointLights = this._scene.getLightsByType(Light.TYPES.POINT)
+    const allLights = this._scene.getAllLights();
+
+    // will be filled with
+    const polygonsToRender = [];
+    const tmpCoord = vec3.create();
+
+    for (let f = 0; f < nbFaces; f += 1) {
+      const v0Index = f * vpf;
+
+      // discard a face if its normal goes more or less the same direction as the vector camera-to-faceCenter.
+      // IOW, if dot product >= 1
+      faceNormal[0] = faceNormals[f * 3];
+      faceNormal[1] = faceNormals[f * 3 + 1];
+      faceNormal[2] = faceNormals[f * 3 + 2];
+
+      faceCenter[0] = faceCenters[f * 3];
+      faceCenter[1] = faceCenters[f * 3 + 1];
+      faceCenter[2] = faceCenters[f * 3 + 2];
+
+      camToCenter[0] = faceCenter[0] - camPosition[0];
+      camToCenter[1] = faceCenter[1] - camPosition[1];
+      camToCenter[2] = faceCenter[2] - camPosition[2];
+      const camToCenterDist = vec3.length(camToCenter);
+      vec3.normalize(camToCenter, camToCenter);
+
+      // discard faces with normal on the wrong direction
+      const dotProd = vec3.dot(faceNormal, camToCenter);
+      if (dotProd >= 0) {
+        continue
+      }
+
+      vec3.transformMat4(tmp, faceCenter, mvpMat);
+      const faceCenter2D = this._unit2DPositionToCanvasPosition(tmp);
+
+      // const allVerticesOfFace3D = [] // in the form [x, y, z, x, y, z, ...]
+      const allVerticesOfFace2D = []; // in the form [x, y, x, y, ...]
+      let allProjectionsAreOutsideFrustrum = true;
+      for (let v = 0; v < vpf; v += 1) {
+        const offset = faces[v0Index + v] * 3;
+        tmpCoord[0] = vertices[offset];
+        tmpCoord[1] = vertices[offset + 1];
+        tmpCoord[2] = vertices[offset + 2];
+        // allVerticesOfFace3D.push(tmpCoord[0], tmpCoord[1], tmpCoord[2])
+
+        vec3.transformMat4(tmpCoord, tmpCoord, mvpMat);
+
+        const isOutsideFrustrum = (tmpCoord[0] >= 1
+                                || tmpCoord[0] <= -1
+                                || tmpCoord[1] >= 1
+                                || tmpCoord[1] <= -1
+                                || tmpCoord[2] >= 1
+                                || tmpCoord[2] <= -1);
+        allProjectionsAreOutsideFrustrum = allProjectionsAreOutsideFrustrum && isOutsideFrustrum;
+        const canvasPos = this._unit2DPositionToCanvasPosition(tmpCoord);
+
+        // we extend the face polygon just a tiny bit so that the stitches between two faces does not show
+        tmp[0] = canvasPos[0] - faceCenter2D[0];
+        tmp[1] = canvasPos[1] - faceCenter2D[1];
+        vec3.normalize(tmp, tmp);
+
+        allVerticesOfFace2D.push(canvasPos[0] + tmp[0] * A_SMALL_BIT, canvasPos[1] + tmp[1] * A_SMALL_BIT);
+      }
+
+      // all the vertices must be oustise to not render
+      if (allProjectionsAreOutsideFrustrum) {
+        continue
+      }
+
+      // compute light.
+      // 1. start from black color
+      const faceColor = [0, 0, 0];
+
+      // 2. Add contributions from each lights
+      allLights.forEach((l) => {
+        const colorToAdd = l.computeLight({
+          surfaceColor: meshColor,
+          illuminatedPosition: faceCenter,
+          illuminatedNormal: faceNormal,
+          specularity: meshSpecularity,
+          cameraPosition: camPosition,
+        });
+
+        faceColor[0] += colorToAdd[0];
+        faceColor[1] += colorToAdd[1];
+        faceColor[2] += colorToAdd[2];
+      });
+
+      polygonsToRender.push({
+        points2D: allVerticesOfFace2D,
+        faceColor,
+        distanceToCam: camToCenterDist,
+      });
+    }
+
+    polygonsToRender.sort((a, b) => (a.distanceToCam > b.distanceToCam ? -1 : 1)).forEach((polygon) => {
+      // adding the face
+      meshView.addFaceColorNoStroke(polygon.points2D, Color.rgbToCssRgb(polygon.faceColor));
+    });
+
+    this._canvas.appendChild(meshView.view);
+  }
+
+
 }
 
 class ObjParser {
@@ -1750,13 +2025,144 @@ class ObjParser {
   }
 }
 
+var LIGHT_TYPES = {
+  AMBIANT: 1,
+  POINT: 2,
+};
+
+class PointLight extends Light {
+  constructor() {
+    super();
+    this._type = LIGHT_TYPES.POINT;
+    this._decayEnabled = false;
+    this._radius = 1;
+  }
+
+  get radius() {
+    return this._radius
+  }
+
+
+  set radius(r) {
+    this._radius = r;
+  }
+
+  enableDecay() {
+    this._decayEnabled = true;
+  }
+
+
+  disableDecay() {
+    this._decayEnabled = false;
+  }
+
+
+  isDecaysEnabled() {
+    return this._decayEnabled
+  }
+
+
+  computeLight(options = {}) {
+    // the word 'surface' is chosen rather than 'mesh' because it's more generic
+    let surfaceColor = null;
+    if ('surfaceColor' in options) {
+      surfaceColor = options.surfaceColor;
+    } else {
+      throw new Error('The mesh color is mandatory to compute the light with PointLight.')
+    }
+
+    let illuminatedPosition = null;
+    if ('illuminatedPosition' in options) {
+      illuminatedPosition = options.illuminatedPosition;
+    } else {
+      throw new Error('The illuminated position is mandatory to compute the light with PointLight.')
+    }
+
+    let illuminatedNormal = null;
+    if ('illuminatedNormal' in options) {
+      illuminatedNormal = options.illuminatedNormal;
+    } else {
+      throw new Error('The illuminated normal is mandatory to compute the light with PointLight.')
+    }
+
+    const specularity = 'specularity' in options ? options.specularity : 0;
+    const cameraPosition = 'cameraPosition' in options ? options.cameraPosition : null;
+
+    if (specularity && !cameraPosition) {
+      throw new Error('The camera position is required to compute the specularity')
+    }
+
+    // Step 1: compute diffuse light. This is not related to camera position, light with emit
+    // on half space following a Lambertian law. The resulting color is a blend of the surface/mesh color.
+    // If decay is enabled, the light decay follow an inverse square law (http://hyperphysics.phy-astr.gsu.edu/hbase/vision/isql.html)
+    // where the intensity 'this._intensity' is effective only at the distance 'this._radius' and
+    // the intensity at another distance d is:
+    //        i = this._intensity  /  (d / this._radius)^2
+
+    // vector from this light source to the surface center
+    const surfaceToLight = vec3.fromValues(
+      this._position[0] - illuminatedPosition[0],
+      this._position[1] - illuminatedPosition[1],
+      this._position[2] - illuminatedPosition[2],
+    );
+    vec3.normalize(surfaceToLight, surfaceToLight);
+
+    // dot product between the surface normal vector and the 
+    let dotProd = vec3.dot(surfaceToLight, illuminatedNormal);
+    dotProd = dotProd > 0 ? dotProd : 0; // onsly considering half space
+
+    let addedColor = [
+      255 * (surfaceColor[0] / 255) * (this._color[0] / 255) * dotProd * this._intensity,
+      255 * (surfaceColor[1] / 255) * (this._color[1] / 255) * dotProd * this._intensity,
+      255 * (surfaceColor[2] / 255) * (this._color[2] / 255) * dotProd * this._intensity,
+    ];
+
+    // Step 2: compute specularity. Only if 'specularity' is greater than 0. This is done with a Phong formula
+    // that depends on the camera position and the resulting color is mostly the light source color
+    // (and not a blend with the surface/mesh color)
+    // TODO
+
+    return addedColor
+  }
+
+
+}
+
+class AmbiantLight extends Light {
+  constructor() {
+    super();
+    this._type = LIGHT_TYPES.AMBIANT;
+  }
+
+
+  computeLight(options = {}) {
+    let surfaceColor = null;
+
+    if ('surfaceColor' in options) {
+      surfaceColor = options.surfaceColor;
+    } else {
+      throw new Error('The surface color is mandatory to compute the light with AmbiantLight.')
+    }
+
+    return [
+      ((this._color[0] / 255) * (surfaceColor[0] / 255)) * 255 * this._intensity,
+      ((this._color[1] / 255) * (surfaceColor[1] / 255)) * 255 * this._intensity,
+      ((this._color[2] / 255) * (surfaceColor[2] / 255)) * 255 * this._intensity,
+    ]
+  }
+}
+
 var index = ({
   Scene,
   PerspectiveCamera,
   Mesh,
   Renderer,
   ObjParser,
+  Light,
+  PointLight,
+  AmbiantLight,
   RENDER_MODES,
+  LIGHT_TYPES,
 });
 
 export default index;

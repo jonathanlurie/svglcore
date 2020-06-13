@@ -1,9 +1,11 @@
+import * as glmatrix from 'gl-matrix'
 import Light from './Light'
+import LIGHT_TYPES from './LightTypes'
 
 class PointLight extends Light {
   constructor() {
     super()
-    this._type = Light.TYPE.POINT
+    this._type = LIGHT_TYPES.POINT
     this._decayEnabled = false
     this._radius = 1
   }
@@ -33,8 +35,7 @@ class PointLight extends Light {
 
 
   computeLight(options = {}) {
-    // the word 'surface' is chosen rather than 'mesh' because the color may already be
-    // the result of a blend from the mesh color and the ambiant light (if any)
+    // the word 'surface' is chosen rather than 'mesh' because it's more generic
     let surfaceColor = null
     if ('surfaceColor' in options) {
       surfaceColor = options.surfaceColor
@@ -69,14 +70,31 @@ class PointLight extends Light {
     // where the intensity 'this._intensity' is effective only at the distance 'this._radius' and
     // the intensity at another distance d is:
     //        i = this._intensity  /  (d / this._radius)^2
-    // TODO
+
+    // vector from this light source to the surface center
+    const surfaceToLight = glmatrix.vec3.fromValues(
+      this._position[0] - illuminatedPosition[0],
+      this._position[1] - illuminatedPosition[1],
+      this._position[2] - illuminatedPosition[2],
+    )
+    glmatrix.vec3.normalize(surfaceToLight, surfaceToLight)
+
+    // dot product between the surface normal vector and the 
+    let dotProd = glmatrix.vec3.dot(surfaceToLight, illuminatedNormal)
+    dotProd = dotProd > 0 ? dotProd : 0 // onsly considering half space
+
+    let addedColor = [
+      255 * (surfaceColor[0] / 255) * (this._color[0] / 255) * dotProd * this._intensity,
+      255 * (surfaceColor[1] / 255) * (this._color[1] / 255) * dotProd * this._intensity,
+      255 * (surfaceColor[2] / 255) * (this._color[2] / 255) * dotProd * this._intensity,
+    ]
 
     // Step 2: compute specularity. Only if 'specularity' is greater than 0. This is done with a Phong formula
     // that depends on the camera position and the resulting color is mostly the light source color
     // (and not a blend with the surface/mesh color)
     // TODO
 
-    this
+    return addedColor
   }
 
 

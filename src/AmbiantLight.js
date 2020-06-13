@@ -1,9 +1,10 @@
 import Light from './Light'
+import LIGHT_TYPES from './LightTypes'
 
 class AmbiantLight extends Light {
   constructor() {
     super()
-    this._type = Light.TYPES.AMBIANT
+    this._type = LIGHT_TYPES.AMBIANT
   }
 
 
