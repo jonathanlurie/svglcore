@@ -70,12 +70,30 @@
       background: rgba(0, 0, 0, 0.8);
     }
 
+    #ghlogo {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 80px;
+      z-index: 10;
+      padding: 10px;
+    }
+
+    #ghlogo img {
+      width: 100%;
+    }
 
   </style>
 </head>
 <body>
   <!-- importing the automatically build module -->
   <script src="../dist/svglcore.umd.js"></script>
+
+  <div id="ghlogo">
+    <a href="https://github.com/jonathanlurie/svglcore">
+      <img src="githublogo.png"/>
+    </a>
+  </div>
 
   <div id="info">
     <p>
