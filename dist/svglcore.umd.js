@@ -1730,6 +1730,8 @@
 
       this._faceCentersWorld = null;
       this._faceCentersWorldNeedUpdate = true;
+
+      this._specularity = 0;
     }
 
 
@@ -1795,9 +1797,9 @@
     get nbVertices() {
       if (this._vertices === null) {
         return 0
-      } else {
-        return this._vertices.length / 3
       }
+
+      return this._vertices.length / 3
     }
 
 
@@ -1912,6 +1914,15 @@
       return this._showBoundingBox
     }
 
+
+    get specularity() {
+      return this._specularity
+    }
+
+
+    set specularity(s) {
+      this._specularity = s;
+    }
 
     /**
      * Note: the bounding box is in world coordinates
@@ -3170,7 +3181,8 @@
       const nbFaces = faces.length / vpf;
       const meshColor = mesh.faceColor;
       const meshSpecularity = mesh.specularity;
-      const A_SMALL_BIT = 0.75;
+
+      const A_SMALL_BIT = 0.25;
 
       const faceNormal = create$2();
       const faceCenter = create$2();
@@ -3240,6 +3252,7 @@
           normalize(tmp, tmp);
 
           allVerticesOfFace2D.push(canvasPos[0] + tmp[0] * A_SMALL_BIT, canvasPos[1] + tmp[1] * A_SMALL_BIT);
+          // allVerticesOfFace2D.push(canvasPos[0], canvasPos[1])
         }
 
         // all the vertices must be oustise to not render
@@ -3355,6 +3368,10 @@
     POINT: 2,
   };
 
+  const tmpMat4 = create$1();
+  const tmpVec3 = create$2();
+  const tmpVec3_2 = create$2();
+
   class PointLight extends Light {
     constructor() {
       super();
@@ -3442,10 +3459,49 @@
         255 * (surfaceColor[2] / 255) * (this._color[2] / 255) * dotProd * this._intensity,
       ];
 
-      // Step 2: compute specularity. Only if 'specularity' is greater than 0. This is done with a Phong formula
-      // that depends on the camera position and the resulting color is mostly the light source color
-      // (and not a blend with the surface/mesh color)
-      // TODO
+      if (specularity > 0) {
+        // Step 2: compute specularity. Only if 'specularity' is greater than 0. This is done with a Phong formula
+        // that depends on the camera position and the resulting color is mostly the light source color
+        // (and not a blend with the surface/mesh color)
+
+        // A ray comes from the light source to the center of the surface with a given angle from the surface normal,
+        // then bounces with an equal angle.
+        // Compute this light bounce vector:
+        // 1. compute the vector from light to surface center
+        tmpVec3[0] = illuminatedPosition[0] - this._position[0];
+        tmpVec3[1] = illuminatedPosition[1] - this._position[1];
+        tmpVec3[2] = illuminatedPosition[2] - this._position[2];
+        // 2. normalize it
+        normalize(tmpVec3, tmpVec3);
+        // 3. comput dot product
+        const dotLightToNormal = dot(illuminatedNormal, tmpVec3);
+
+        if (dotLightToNormal < 0) {
+          // 4. compute reflection
+          tmpVec3[0] = tmpVec3[0] - 2 * dotLightToNormal * illuminatedNormal[0];
+          tmpVec3[1] = tmpVec3[1] - 2 * dotLightToNormal * illuminatedNormal[1];
+          tmpVec3[2] = tmpVec3[2] - 2 * dotLightToNormal * illuminatedNormal[2];
+          normalize(tmpVec3, tmpVec3);
+
+          // 5. compute the vector surfaceCenter-to-camera
+          tmpVec3_2[0] = cameraPosition[0] - illuminatedPosition[0];
+          tmpVec3_2[1] = cameraPosition[1] - illuminatedPosition[1];
+          tmpVec3_2[2] = cameraPosition[2] - illuminatedPosition[2];
+          // 6. normalize this
+          normalize(tmpVec3_2, tmpVec3_2);
+          // 7. compute the dot product to have the specularity component
+          const dotProd2 = dot(tmpVec3, tmpVec3_2) ** (specularity * 30); // the 2 is just to make the light smaller and more intense
+
+          // 8. adding specularity to the diffuse light
+          addedColor[0] += this._color[0] * dotProd2 * specularity * this._intensity;
+          addedColor[1] += this._color[1] * dotProd2 * specularity * this._intensity;
+          addedColor[2] += this._color[2] * dotProd2 * specularity * this._intensity;
+        }
+      }
+
+      addedColor[0] = Math.min(255, addedColor[0]);
+      addedColor[1] = Math.min(255, addedColor[1]);
+      addedColor[2] = Math.min(255, addedColor[2]);
 
       return addedColor
     }

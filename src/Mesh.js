@@ -49,6 +49,8 @@ class Mesh {
 
     this._faceCentersWorld = null
     this._faceCentersWorldNeedUpdate = true
+
+    this._specularity = 0
   }
 
 
@@ -114,9 +116,9 @@ class Mesh {
   get nbVertices() {
     if (this._vertices === null) {
       return 0
-    } else {
-      return this._vertices.length / 3
     }
+
+    return this._vertices.length / 3
   }
 
 
@@ -231,6 +233,15 @@ class Mesh {
     return this._showBoundingBox
   }
 
+
+  get specularity() {
+    return this._specularity
+  }
+
+
+  set specularity(s) {
+    this._specularity = s
+  }
 
   /**
    * Note: the bounding box is in world coordinates

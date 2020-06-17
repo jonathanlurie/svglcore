@@ -677,7 +677,8 @@ class Renderer {
     const nbFaces = faces.length / vpf
     const meshColor = mesh.faceColor
     const meshSpecularity = mesh.specularity
-    const A_SMALL_BIT = 0.75
+
+    const A_SMALL_BIT = 0.25
 
     const faceNormal = glmatrix.vec3.create()
     const faceCenter = glmatrix.vec3.create()
@@ -747,6 +748,7 @@ class Renderer {
         glmatrix.vec3.normalize(tmp, tmp)
 
         allVerticesOfFace2D.push(canvasPos[0] + tmp[0] * A_SMALL_BIT, canvasPos[1] + tmp[1] * A_SMALL_BIT)
+        // allVerticesOfFace2D.push(canvasPos[0], canvasPos[1])
       }
 
       // all the vertices must be oustise to not render
