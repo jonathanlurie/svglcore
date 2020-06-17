@@ -3441,6 +3441,19 @@
       // the intensity at another distance d is:
       //        i = this._intensity  /  (d / this._radius)^2
 
+      // newIntensity is just like this._intensity excepts it decays if the the decay options is enabled
+      let newIntensity = this._intensity;
+
+      if (this._decayEnabled) {
+        const lightToSurfaceDistance = (
+          (this._position[0] - illuminatedPosition[0]) ** 2 +
+          (this._position[1] - illuminatedPosition[1]) ** 2 +
+          (this._position[2] - illuminatedPosition[2]) ** 2
+        ) ** 0.5;
+        newIntensity = this._intensity / ((lightToSurfaceDistance / this._radius) ** 2);
+        // newIntensity = Math.min(this._intensity, this._intensity / ((lightToSurfaceDistance / this._radius) ** 2))
+      }
+
       // vector from this light source to the surface center
       const surfaceToLight = fromValues(
         this._position[0] - illuminatedPosition[0],
@@ -3454,9 +3467,9 @@
       dotProd = dotProd > 0 ? dotProd : 0; // onsly considering half space
 
       let addedColor = [
-        255 * (surfaceColor[0] / 255) * (this._color[0] / 255) * dotProd * this._intensity,
-        255 * (surfaceColor[1] / 255) * (this._color[1] / 255) * dotProd * this._intensity,
-        255 * (surfaceColor[2] / 255) * (this._color[2] / 255) * dotProd * this._intensity,
+        255 * (surfaceColor[0] / 255) * (this._color[0] / 255) * dotProd * newIntensity,
+        255 * (surfaceColor[1] / 255) * (this._color[1] / 255) * dotProd * newIntensity,
+        255 * (surfaceColor[2] / 255) * (this._color[2] / 255) * dotProd * newIntensity,
       ];
 
       if (specularity > 0) {
@@ -3490,12 +3503,12 @@
           // 6. normalize this
           normalize(tmpVec3_2, tmpVec3_2);
           // 7. compute the dot product to have the specularity component
-          const dotProd2 = dot(tmpVec3, tmpVec3_2) ** (specularity * 30); // the 2 is just to make the light smaller and more intense
+          const dotProd2 = dot(tmpVec3, tmpVec3_2) ** (30 / specularity); // the 2 is just to make the light smaller and more intense
 
           // 8. adding specularity to the diffuse light
-          addedColor[0] += this._color[0] * dotProd2 * specularity * this._intensity;
-          addedColor[1] += this._color[1] * dotProd2 * specularity * this._intensity;
-          addedColor[2] += this._color[2] * dotProd2 * specularity * this._intensity;
+          addedColor[0] += this._color[0] * dotProd2 * specularity * ((newIntensity + this._intensity) / 2);
+          addedColor[1] += this._color[1] * dotProd2 * specularity * ((newIntensity + this._intensity) / 2);
+          addedColor[2] += this._color[2] * dotProd2 * specularity * ((newIntensity + this._intensity) / 2);
         }
       }
 

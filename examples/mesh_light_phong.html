@@ -108,7 +108,7 @@
     }
     
     const edgeColor = [0, 255, 0]
-    const faceColor = [255, 0, 255]
+    const faceColor = [255, 50, 255]
 
     const mesh = new svglcore.Mesh()
     console.log('mesh', mesh)
@@ -131,7 +131,7 @@
 
     const camera = new svglcore.PerspectiveCamera(
       {
-        eye: [0, 0, 500],
+        eye: [0, 0, 350],
         center: [0, 0, 0],
         up: [0, 1, 0]
       }
@@ -146,16 +146,27 @@
 
     const pointLight1 = new svglcore.PointLight()
     pointLight1.color = [255, 255, 255]
-    pointLight1.position = [0, 100, 0]
+    pointLight1.position = [-3, 4, 3]
+    pointLight1.radius = 2.5
     pointLight1.intensity = 1
+    pointLight1.enableDecay()
     scene.addLight(pointLight1)
 
 
     const pointLight2 = new svglcore.PointLight()
     pointLight2.color = [100, 100, 255]
-    pointLight2.position = [0, -100, 0]
-    pointLight2.intensity = 0.4
+    pointLight2.position = [0, -100, 2]
+    pointLight2.intensity = 0.6
     scene.addLight(pointLight2)
+
+
+    const pointLight3 = new svglcore.PointLight()
+    pointLight3.color = [255, 255, 255]
+    pointLight3.position = [2, 1.5, -3]
+    pointLight3.radius = 3
+    pointLight3.intensity = 1
+    pointLight3.enableDecay()
+    scene.addLight(pointLight3)
     
     camera.aspectRatio = canvasSize.w / canvasSize.h
     camera.fieldOfView = Math.PI / 4
