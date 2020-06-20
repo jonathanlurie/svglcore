@@ -19,6 +19,7 @@
   <script>
     const parentDiv = document.getElementById('parent')
     let mouseDown = false
+    let shiftDown = false
 
     const canvasSize = {
       w: 1000,
@@ -77,9 +78,14 @@
 
     parentDiv.addEventListener('mousemove', (evt) => {
       if (mouseDown) {
-        camera.rotate(
-          [-evt.movementX * 0.005, -evt.movementY * 0.005]
-        )
+        if (shiftDown) {
+          // camera.moveRight(-evt.movementX* 0.01)
+          // camera.moveUp(evt.movementY* 0.01)
+
+          camera.moveUpRight(evt.movementY* 0.01, -evt.movementX* 0.01)
+        } else {
+          camera.rotate([-evt.movementX * 0.005, -evt.movementY * 0.005])
+        }
         renderer.render()
       }
     })
@@ -90,6 +96,18 @@
       renderer.render()
     })
 
+
+    window.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Shift') {
+        shiftDown = true
+      }
+    })
+
+    window.addEventListener('keyup', (evt) => {
+      if (evt.key === 'Shift') {
+        shiftDown = false
+      }
+    })
     
   </script>
 

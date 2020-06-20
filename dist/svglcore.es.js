@@ -1082,6 +1082,9 @@ class Scene {
 
 // inspired by:
 // https://github.com/mikolalysenko/orbit-camera/blob/master/orbit.js
+//
+// Some other thread
+// https://www.gamedev.net/forums/topic/497918-eye-and-up-vectors-from-view-matrix/
 
 function quatFromVec(out, da) {
   const x = da[0];
@@ -1120,6 +1123,7 @@ class PerspectiveCamera {
     }
   }
 
+
   lookAt(eye, center, up) {
     mat4.lookAt(scratch0, eye, center, up);
     mat3.fromMat4(scratch0, scratch0);
@@ -1127,6 +1131,7 @@ class PerspectiveCamera {
     vec3.copy(this._center, center);
     this._distance = vec3.distance(eye, center);
   }
+
 
   get matrix() {
     let m = mat4.create();
@@ -1138,6 +1143,35 @@ class PerspectiveCamera {
     const m = this.matrix;
     return vec3.fromValues(m[12], m[13], m[14])
   }
+
+
+  get eye() {
+    return this.position
+  }
+
+
+  get up() {
+    const vm = this.viewMatrix;
+    return vec3.fromValues(vm[1], vm[5], vm[9])
+  }
+
+
+  get right() {
+    const vm = this.viewMatrix;
+    return vec3.fromValues(vm[0], vm[4], vm[8])
+  }
+
+
+  get direction() {
+    const vm = this.viewMatrix;
+    return vec3.fromValues(vm[2], vm[6], vm[10])
+  }
+
+
+  get center() {
+    return this._center.slice()
+  }
+
 
   get viewMatrix() {
     const out = mat4.create();
@@ -1154,14 +1188,168 @@ class PerspectiveCamera {
   }
 
 
-  translate(vec) {
-    const d = this._distance;
-    scratch0[0] = -d * (vec[0] || 0);
-    scratch0[1] = d * (vec[1] || 0);
-    scratch0[2] = d * (vec[2] || 0);
-    vec3.transformQuat(scratch0, scratch0, this._rotation);
-    vec3.add(this._center, this._center, scratch0);
+  /**
+   * Relative to current location, where vec is:
+   *  vec[0] --> move along right vector
+   *  vec[1] --> move along up vector
+   *  vec[2] --> move along dir vector
+   * @param {*} vec 
+   */
+  moveAlong(vec) {
+    const curEye = this.eye;
+    const curCenter = this.center;
+    const curUp = this.up;
+
+    const vm = this.viewMatrix;
+    const right = vec3.fromValues(vm[0], vm[4], vm[8]);
+    const up = vec3.fromValues(vm[1], vm[5], vm[9]);
+    const dir = vec3.fromValues(vm[2], vm[6], vm[10]);
+
+    const alongRight = [
+      vec[0] * right[0],
+      vec[0] * right[1],
+      vec[0] * right[2],
+    ];
+
+    const alongUp = [
+      vec[1] * up[0],
+      vec[1] * up[1],
+      vec[1] * up[2],
+    ];
+
+    const alongDir = [
+      vec[2] * dir[0],
+      vec[2] * dir[1],
+      vec[2] * dir[2],
+    ];
+
+    const translation = [
+      alongRight[0] + alongUp[0] + alongDir[0],
+      alongRight[1] + alongUp[1] + alongDir[1],
+      alongRight[2] + alongUp[2] + alongDir[2],
+    ];
+
+    const newEye = [
+      curEye[0] + translation[0],
+      curEye[1] + translation[1],
+      curEye[2] + translation[2],
+    ];
+
+    const newCenter = [
+      curCenter[0] + translation[0],
+      curCenter[1] + translation[1],
+      curCenter[2] + translation[2],
+    ];
+
+    this.lookAt(newEye, newCenter, curUp);
+    return this
   }
+
+
+  moveRight(d) {
+    const curEye = this.eye;
+    const curCenter = this.center;
+    const curUp = this.up;
+
+    const vm = this.viewMatrix;
+    const right = vec3.fromValues(vm[0], vm[4], vm[8]);
+
+    const alongRight = [
+      d * right[0],
+      d * right[1],
+      d * right[2],
+    ];
+
+    const newEye = [
+      curEye[0] + alongRight[0],
+      curEye[1] + alongRight[1],
+      curEye[2] + alongRight[2],
+    ];
+
+    const newCenter = [
+      curCenter[0] + alongRight[0],
+      curCenter[1] + alongRight[1],
+      curCenter[2] + alongRight[2],
+    ];
+
+    this.lookAt(newEye, newCenter, curUp);
+  }
+
+
+  moveUp(d) {
+    const curEye = this.eye;
+    const curCenter = this.center;
+    const curUp = this.up;
+
+    const vm = this.viewMatrix;
+    const up = vec3.fromValues(vm[1], vm[5], vm[9]);
+
+    const alongUp = [
+      d * up[0],
+      d * up[1],
+      d * up[2],
+    ];
+
+    const newEye = [
+      curEye[0] + alongUp[0],
+      curEye[1] + alongUp[1],
+      curEye[2] + alongUp[2],
+    ];
+
+    const newCenter = [
+      curCenter[0] + alongUp[0],
+      curCenter[1] + alongUp[1],
+      curCenter[2] + alongUp[2],
+    ];
+
+    this.lookAt(newEye, newCenter, curUp);
+  }
+
+
+  moveUpRight(u, r) {
+    const curEye = this.eye;
+    const curCenter = this.center;
+    const curUp = this.up;
+
+    const vm = this.viewMatrix;
+    const up = vec3.fromValues(vm[1], vm[5], vm[9]);
+    const right = vec3.fromValues(vm[0], vm[4], vm[8]);
+
+    const alongUp = [
+      u * up[0],
+      u * up[1],
+      u * up[2],
+    ];
+
+    const alongRight = [
+      r * right[0],
+      r * right[1],
+      r * right[2],
+    ];
+
+    const newEye = [
+      curEye[0] + alongUp[0] + alongRight[0],
+      curEye[1] + alongUp[1] + alongRight[1],
+      curEye[2] + alongUp[2] + alongRight[2],
+    ];
+
+    const newCenter = [
+      curCenter[0] + alongUp[0] + alongRight[0],
+      curCenter[1] + alongUp[1] + alongRight[1],
+      curCenter[2] + alongUp[2] + alongRight[2],
+    ];
+
+    this.lookAt(newEye, newCenter, curUp);
+  }
+
+  // translate(vec) {
+  //   const d = this._distance
+  //   scratch0[0] = -d * (vec[0] || 0)
+  //   scratch0[1] = d * (vec[1] || 0)
+  //   scratch0[2] = d * (vec[2] || 0)
+  //   glmatrix.vec3.transformQuat(scratch0, scratch0, this._rotation)
+  //   glmatrix.vec3.add(this._center, this._center, scratch0)
+  // }
 
 
   dolly(d) {
