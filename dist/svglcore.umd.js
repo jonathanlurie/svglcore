@@ -2411,55 +2411,55 @@
      *  vec[2] --> move along dir vector
      * @param {*} vec 
      */
-    moveAlong(vec) {
-      const curEye = this.eye;
-      const curCenter = this.center;
-      const curUp = this.up;
+    // moveAlong(vec) {
+    //   const curEye = this.eye
+    //   const curCenter = this.center
+    //   const curUp = this.up
 
-      const vm = this.viewMatrix;
-      const right = fromValues(vm[0], vm[4], vm[8]);
-      const up = fromValues(vm[1], vm[5], vm[9]);
-      const dir = fromValues(vm[2], vm[6], vm[10]);
+    //   const vm = this.viewMatrix
+    //   const right = glmatrix.vec3.fromValues(vm[0], vm[4], vm[8])
+    //   const up = glmatrix.vec3.fromValues(vm[1], vm[5], vm[9])
+    //   const dir = glmatrix.vec3.fromValues(vm[2], vm[6], vm[10])
 
-      const alongRight = [
-        vec[0] * right[0],
-        vec[0] * right[1],
-        vec[0] * right[2],
-      ];
+    //   const alongRight = [
+    //     vec[0] * right[0],
+    //     vec[0] * right[1],
+    //     vec[0] * right[2],
+    //   ]
 
-      const alongUp = [
-        vec[1] * up[0],
-        vec[1] * up[1],
-        vec[1] * up[2],
-      ];
+    //   const alongUp = [
+    //     vec[1] * up[0],
+    //     vec[1] * up[1],
+    //     vec[1] * up[2],
+    //   ]
 
-      const alongDir = [
-        vec[2] * dir[0],
-        vec[2] * dir[1],
-        vec[2] * dir[2],
-      ];
+    //   const alongDir = [
+    //     vec[2] * dir[0],
+    //     vec[2] * dir[1],
+    //     vec[2] * dir[2],
+    //   ]
 
-      const translation = [
-        alongRight[0] + alongUp[0] + alongDir[0],
-        alongRight[1] + alongUp[1] + alongDir[1],
-        alongRight[2] + alongUp[2] + alongDir[2],
-      ];
+    //   const translation = [
+    //     alongRight[0] + alongUp[0] + alongDir[0],
+    //     alongRight[1] + alongUp[1] + alongDir[1],
+    //     alongRight[2] + alongUp[2] + alongDir[2],
+    //   ]
 
-      const newEye = [
-        curEye[0] + translation[0],
-        curEye[1] + translation[1],
-        curEye[2] + translation[2],
-      ];
+    //   const newEye = [
+    //     curEye[0] + translation[0],
+    //     curEye[1] + translation[1],
+    //     curEye[2] + translation[2],
+    //   ]
 
-      const newCenter = [
-        curCenter[0] + translation[0],
-        curCenter[1] + translation[1],
-        curCenter[2] + translation[2],
-      ];
+    //   const newCenter = [
+    //     curCenter[0] + translation[0],
+    //     curCenter[1] + translation[1],
+    //     curCenter[2] + translation[2],
+    //   ]
 
-      this.lookAt(newEye, newCenter, curUp);
-      return this
-    }
+    //   this.lookAt(newEye, newCenter, curUp)
+    //   return this
+    // }
 
 
     moveRight(d) {
@@ -2522,40 +2522,43 @@
     }
 
 
-    moveUpRight(u, r) {
-      const curEye = this.eye;
-      const curCenter = this.center;
-      const curUp = this.up;
-
+    moveAlong(u, r, d) {
       const vm = this.viewMatrix;
-      const up = fromValues(vm[1], vm[5], vm[9]);
-      const right = fromValues(vm[0], vm[4], vm[8]);
+
+      /*
+
+        The view matrix is actually
+
+              | right[0] right[1] right[2] eye[0] |
+        vM =  | up[0]    up[1]    up[2]    eye[1] |
+              | dir[0]   dir[1]   dir[2]   eye[2] |
+              | .        .        .        1      |
+
+        Crazy, right?
+
+      */
 
       const alongUp = [
-        u * up[0],
-        u * up[1],
-        u * up[2],
+        u * vm[1],
+        u * vm[5],
+        u * vm[9],
       ];
 
       const alongRight = [
-        r * right[0],
-        r * right[1],
-        r * right[2],
+        r * vm[0],
+        r * vm[4],
+        r * vm[8],
       ];
 
-      const newEye = [
-        curEye[0] + alongUp[0] + alongRight[0],
-        curEye[1] + alongUp[1] + alongRight[1],
-        curEye[2] + alongUp[2] + alongRight[2],
+      const alongDir = [
+        d * vm[2],
+        d * vm[6],
+        d * vm[10],
       ];
 
-      const newCenter = [
-        curCenter[0] + alongUp[0] + alongRight[0],
-        curCenter[1] + alongUp[1] + alongRight[1],
-        curCenter[2] + alongUp[2] + alongRight[2],
-      ];
-
-      this.lookAt(newEye, newCenter, curUp);
+      this._center[0] += alongUp[0] + alongRight[0] + alongDir[0];
+      this._center[1] += alongUp[1] + alongRight[1] + alongDir[1];
+      this._center[2] += alongUp[2] + alongRight[2] + alongDir[2];
     }
 
     // translate(vec) {

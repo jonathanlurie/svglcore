@@ -114,6 +114,7 @@
     const parentDiv = document.getElementById('parent')
     const fpsInfo = document.getElementById('fps-info')
     let mouseDown = false
+    let shiftDown = false
 
     const objRes = await fetch('meshes/bunny_med.obj')
     const objStr = await objRes.text()
@@ -221,9 +222,11 @@
 
     parentDiv.addEventListener('mousemove', (evt) => {
       if (mouseDown) {
-        camera.rotate(
-          [-evt.movementX * 0.005, -evt.movementY * 0.005]
-        )
+        if (shiftDown) {
+          camera.moveAlong(evt.movementY* 0.5, -evt.movementX* 0.5, 0)
+        } else {
+          camera.rotate([-evt.movementX * 0.005, -evt.movementY * 0.005])
+        }
         needRender = true
       }
     })
@@ -233,7 +236,11 @@
       event.preventDefault()
       mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       mesh.edgeColor = edgeColor
-      camera.dolly(evt.deltaY / 10.)
+      if (shiftDown) {
+        camera.moveAlong(0, 0, evt.deltaY / 10.)
+      } else {
+        camera.dolly(evt.deltaY / 10.)
+      }
       needRender = true
 
       if(timer !== null) {
@@ -279,6 +286,18 @@
       document.body.appendChild(element)
       element.click()
       document.body.removeChild(element)
+    })
+
+    window.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Shift') {
+        shiftDown = true
+      }
+    })
+
+    window.addEventListener('keyup', (evt) => {
+      if (evt.key === 'Shift') {
+        shiftDown = false
+      }
     })
 
   }

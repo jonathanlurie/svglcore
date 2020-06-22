@@ -79,10 +79,7 @@
     parentDiv.addEventListener('mousemove', (evt) => {
       if (mouseDown) {
         if (shiftDown) {
-          // camera.moveRight(-evt.movementX* 0.01)
-          // camera.moveUp(evt.movementY* 0.01)
-
-          camera.moveUpRight(evt.movementY* 0.01, -evt.movementX* 0.01)
+          camera.moveAlong(evt.movementY* 0.01, -evt.movementX* 0.01, 0)
         } else {
           camera.rotate([-evt.movementX * 0.005, -evt.movementY * 0.005])
         }
@@ -92,7 +89,12 @@
 
     parentDiv.addEventListener('wheel', (evt) => {
       event.preventDefault()
-      camera.dolly(evt.deltaY / 100.)
+      if (shiftDown) {
+        camera.moveAlong(0, 0, evt.deltaY / 100.)
+      } else {
+        camera.dolly(evt.deltaY / 100.)
+      }
+      
       renderer.render()
     })
 
