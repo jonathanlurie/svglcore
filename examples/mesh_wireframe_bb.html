@@ -110,12 +110,10 @@
     const mesh = new svglcore.Mesh()
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
-    mesh.lineThickness = 0.3
+    mesh.lineThickness = 0.4
     mesh.edgeColor = '#d021ff'
     mesh.opacity = 0.6
     mesh.scale = [35, 35, 35]   
-    
-    console.log(mesh.boundingBox)
     
 
     // center the mesh on its center (world center)
@@ -126,10 +124,13 @@
     const scene = new svglcore.Scene()
     scene.add(mesh)
 
+    const bb = mesh.boundingBox
+    const cameraDistance = Math.max(bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]) * 80
+
     const camera = new svglcore.PerspectiveCamera(
       {
-        eye: [0, 0, 500],
-        center: [0, 0, 0],
+        eye: [0, 0, cameraDistance],
+        center: bb.center,
         up: [0, 1, 0]
       }
     )

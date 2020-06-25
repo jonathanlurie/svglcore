@@ -116,7 +116,7 @@
     let mouseDown = false
     let shiftDown = false
 
-    const objRes = await fetch('meshes/bunny_med.obj')
+    const objRes = await fetch('meshes/teapot.obj')
     const objStr = await objRes.text()
 
     const meshData = svglcore.ObjParser.parse(objStr)
@@ -127,7 +127,7 @@
     }
     
     const edgeColor = [0, 255, 0]
-    const faceColor = [255, 50, 255]
+    const faceColor = [100, 100, 255]
 
     const mesh = new svglcore.Mesh()
     console.log('mesh', mesh)
@@ -135,7 +135,7 @@
     mesh.vertices = meshData.vertices
     mesh.faces = meshData.faces
     mesh.verticesPerFace = meshData.verticesPerFace
-    mesh.lineThickness = 0.2
+    mesh.lineThickness = 2
     mesh.edgeColor = edgeColor
     mesh.faceColor = faceColor
     mesh.scale = [35, 35, 35]   
@@ -149,10 +149,15 @@
     const scene = new svglcore.Scene()
     scene.add(mesh)
 
+    const bb = mesh.boundingBox
+    const cameraDistance = Math.max(bb.max[0] - bb.min[0], bb.max[1] - bb.min[1], bb.max[2] - bb.min[2]) * 50
+    console.log(bb)
+    
+
     const camera = new svglcore.PerspectiveCamera(
       {
-        eye: [0, 0, 350],
-        center: [0, 0, 0],
+        eye: [0, 0, cameraDistance],
+        center: bb.center,
         up: [0, 1, 0]
       }
     )
@@ -169,24 +174,24 @@
 
     const pointLight1 = new svglcore.PointLight()
     pointLight1.color = [255, 255, 255]
-    pointLight1.position = [-3, 4, 3]
-    pointLight1.radius = 2.5
+    pointLight1.position = [-150, 100, 100]
+    pointLight1.radius = 200
     pointLight1.intensity = 1
     pointLight1.enableDecay()
     scene.addLight(pointLight1)
 
 
     const pointLight2 = new svglcore.PointLight()
-    pointLight2.color = [100, 100, 255]
-    pointLight2.position = [0, -100, 2]
+    pointLight2.color = '#e00da1'
+    pointLight2.position = [0, -300, -20]
     pointLight2.intensity = 0.6
     scene.addLight(pointLight2)
 
 
     const pointLight3 = new svglcore.PointLight()
     pointLight3.color = [255, 255, 255]
-    pointLight3.position = [2, 1.5, -3]
-    pointLight3.radius = 3
+    pointLight3.position = [100, 100, -120]
+    pointLight3.radius = 70
     pointLight3.intensity = 1
     pointLight3.enableDecay()
     scene.addLight(pointLight3)
@@ -224,7 +229,7 @@
     parentDiv.addEventListener('mousemove', (evt) => {
       if (mouseDown) {
         if (shiftDown) {
-          camera.moveAlong(evt.movementY* 0.5, -evt.movementX* 0.5, 0)
+          camera.moveAlong(evt.movementY* 10, -evt.movementX* 10, 0)
         } else {
           camera.rotate([-evt.movementX * 0.005, -evt.movementY * 0.005])
         }
@@ -238,9 +243,9 @@
       mesh.renderMode = svglcore.RENDER_MODES.WIREFRAME_RANDOM_SUB
       mesh.edgeColor = edgeColor
       if (shiftDown) {
-        camera.moveAlong(0, 0, evt.deltaY / 10.)
+        camera.moveAlong(0, 0, evt.deltaY)
       } else {
-        camera.dolly(evt.deltaY / 10.)
+        camera.dolly(evt.deltaY)
       }
       needRender = true
 

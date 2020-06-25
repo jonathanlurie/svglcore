@@ -92,6 +92,8 @@ class Renderer {
     const viewMat = this._camera.viewMatrix
     const projMat = this._camera.projMatrix
 
+    // Sort meshes by distance to the camera (from far to close) using the center of the bounding box
+
     meshes.forEach((mesh) => {
       if (!mesh.visible) {
         return

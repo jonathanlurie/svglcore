@@ -2729,6 +2729,8 @@
       const viewMat = this._camera.viewMatrix;
       const projMat = this._camera.projMatrix;
 
+      // Sort meshes by distance to the camera (from far to close) using the center of the bounding box
+
       meshes.forEach((mesh) => {
         if (!mesh.visible) {
           return
@@ -3430,68 +3432,143 @@
 
   }
 
-  var wavefrontObjParser = ParseWavefrontObj;
-
-  // Map .obj vertex info line names to our returned property names
-  var vertexInfoNameMap = {v: 'vertexPositions', vt: 'vertexUVs', vn: 'vertexNormals'};
-
-  function ParseWavefrontObj (wavefrontString) {
-
-    var parsedJSON = {vertexNormals: [], vertexUVs: [], vertexPositions: [], vertexNormalIndices: [], vertexUVIndices: [], vertexPositionIndices: []};
-
-    var linesInWavefrontObj = wavefrontString.split('\n');
-
-    var currentLine, currentLineTokens, vertexInfoType, i, k;
-
-    // Loop through and parse every line in our .obj file
-    for (i = 0; i < linesInWavefrontObj.length; i++) {
-      currentLine = linesInWavefrontObj[i];
-      // Tokenize our current line
-      currentLineTokens = currentLine.trim().split(/\s+/);
-      // vertex position, vertex texture, or vertex normal
-      vertexInfoType = vertexInfoNameMap[currentLineTokens[0]];
-
-      if (vertexInfoType) {
-        for (k = 1; k < currentLineTokens.length; k++) {
-          parsedJSON[vertexInfoType].push(parseFloat(currentLineTokens[k]));
-        }
-        continue
-      }
-
-      if (currentLineTokens[0] === 'f') {
-        // Get our 4 sets of vertex, uv, and normal indices for this face
-        for (k = 1; k < 5; k++) {
-          // If there is no fourth face entry then this is specifying a triangle
-          // in this case we push `-1`
-          // Consumers of this module should check for `-1` before expanding face data
-          if (k === 4 && !currentLineTokens[4]) {
-            parsedJSON.vertexPositionIndices.push(-1);
-            parsedJSON.vertexUVIndices.push(-1);
-            parsedJSON.vertexNormalIndices.push(-1);
-          } else {
-            var indices = currentLineTokens[k].split('/');
-            parsedJSON.vertexPositionIndices.push(parseInt(indices[0], 10) - 1); // We zero index
-            parsedJSON.vertexUVIndices.push(parseInt(indices[1], 10) - 1); // our face indices
-            parsedJSON.vertexNormalIndices.push(parseInt(indices[2], 10) - 1); // by subtracting 1
-          }
-        }
-      }
+  function parse(str) {
+    if(typeof buf !== 'string') {
+      str = str.toString();
     }
 
-    return parsedJSON
+    var lines = str.trim().split('\n');
+
+    var positions = [];
+    var cells = [];
+    var vertexUVs = [];
+    var vertexNormals = [];
+    var faceUVs = [];
+    var faceNormals = [];
+    var name = null;
+
+    for(var i=0; i<lines.length; i++) {
+      var line = lines[i];
+
+      if(line[0] === '#') continue;
+
+      var parts = line
+        .trim()
+        .replace(/ +/g, ' ')
+        .split(' ');
+
+      switch(parts[0]) {
+        case 'o':
+          name = parts.slice(1).join(' ');
+          break;
+        case 'v':
+          var position = parts.slice(1).map(Number).slice(0, 3);
+          positions.push(position);
+          break;
+        case 'vt':
+          var uv = parts.slice(1).map(Number);
+          vertexUVs.push(uv);
+          break;
+        case 'vn':
+          var normal = parts.slice(1).map(Number);
+          vertexNormals.push(normal);
+          break;
+        case 'f':
+          var positionIndices = [];
+          var uvIndices = [];
+          var normalIndices = [];
+
+          parts
+            .slice(1)
+            .forEach(function(part) {
+              var indices = part
+                .split('/')
+                .map(function(index) {
+                  if(index === '') {
+                    return NaN;
+                  }
+                  return Number(index);
+                });
+
+              positionIndices.push(convertIndex(indices[0], positions.length));
+
+              if(indices.length > 1) {
+                if(!isNaN(indices[1])) {
+                  uvIndices.push(convertIndex(indices[1], vertexUVs.length));
+                }
+                if(!isNaN(indices[2])) {
+                  normalIndices.push(convertIndex(indices[2], vertexNormals.length));
+                }
+              }
+
+            });
+
+            cells.push(positionIndices);
+
+            if(uvIndices.length > 0) {
+              faceUVs.push(uvIndices);
+            }
+            if(normalIndices.length > 0) {
+              faceNormals.push(normalIndices);
+            }
+            
+          break;
+          // skip
+      }
+
+    }
+
+    var mesh = {
+      positions: positions,
+      cells: cells
+    };
+
+    if(vertexUVs.length > 0) {
+      mesh.vertexUVs = vertexUVs;
+    }
+
+    if(faceUVs.length > 0) { 
+      mesh.faceUVs = faceUVs;
+    }
+
+    if(vertexNormals.length > 0) {
+      mesh.vertexNormals = vertexNormals;
+    }
+
+    if(faceNormals.length > 0) {
+      mesh.faceNormals = faceNormals;
+    }
+
+    if(name !== null) {
+      mesh.name = name;
+    }
+
+    return mesh;
   }
+
+  function convertIndex(objIndex, arrayLength) {
+    return objIndex > 0 ? objIndex - 1 : objIndex + arrayLength;
+  }
+
+  var parseWavefrontObj = parse;
 
   class ObjParser {
     static parse(objStr) {
-      const meshData = wavefrontObjParser(objStr);
-      const faces = new Uint32Array(meshData.vertexPositionIndices.filter((v) => v >= 0)); // the lib leaves room for 4-vertices faces by adding -1
-      const vertices = new Float32Array(meshData.vertexPositions);
-      const normals = new Float32Array(meshData.vertexNormals);
+      // const meshData = parseWFObj(objStr)
+      // const faces = new Uint32Array(meshData.vertexPositionIndices.filter((v) => v >= 0)) // the lib leaves room for 4-vertices faces by adding -1
+      // const vertices = new Float32Array(meshData.vertexPositions)
+      // const normals = new Float32Array(meshData.vertexNormals)
+
+
+      const meshData = parseWavefrontObj(objStr);
+      const vertices = new Float32Array(meshData.positions.flat());
+      const faces = new Uint32Array(meshData.cells.flat());
+      const verticesPerFace = meshData.cells[0].length;
 
       return {
         vertices,
         faces,
-        normals,
+        verticesPerFace,
       }
     }
   }
